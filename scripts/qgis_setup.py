@@ -4,17 +4,31 @@ import sys
 from qgis.core import QgsApplication
 
 
-def initialize_qgis():
+def initialize_qgis(gui=False):
     """
-    Start the QGIS engine in headless mode and initialise
-    the QGIS Processing framework.
+    Initialise the QGIS runtime.
+
+    Parameters
+    ----------
+    gui : bool
+        False:
+            Run QGIS headlessly for processing/backend work.
+
+        True:
+            Enable QGIS GUI components so they can later be embedded
+            inside our own application, for example QgsMapCanvas.
+
+    Returns
+    -------
+    QgsApplication
+        The initialised QGIS application instance.
     """
 
     qgis_prefix = os.environ.get("QGIS_PREFIX_PATH", "/usr")
 
     QgsApplication.setPrefixPath(qgis_prefix, True)
 
-    qgs = QgsApplication([], False)
+    qgs = QgsApplication([], gui)
     qgs.initQgis()
 
     processing_path = os.path.join(
@@ -29,6 +43,7 @@ def initialize_qgis():
         sys.path.append(processing_path)
 
     from processing.core.Processing import Processing
+
     Processing.initialize()
 
     return qgs
@@ -36,7 +51,7 @@ def initialize_qgis():
 
 def shutdown_qgis(qgs):
     """
-    Shut down the QGIS engine cleanly.
+    Shut down the QGIS runtime cleanly.
     """
 
     if qgs is not None:

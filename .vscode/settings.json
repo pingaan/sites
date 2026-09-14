@@ -1,0 +1,16 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+    "python.terminal.activateEnvironment": true,
+
+    "python.analysis.extraPaths": [
+        "/usr/lib/python3/dist-packages",
+        "/usr/share/qgis/python",
+        "/usr/share/qgis/python/plugins"
+    ],
+
+    "terminal.integrated.env.linux": {
+        "QGIS_PREFIX_PATH": "/usr",
+        "PYTHONPATH": "/usr/share/qgis/python:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages"
+    }
+}

@@ -79,7 +79,7 @@ def get_paths():
 
     elif os_name == "Linux":
 
-        base_path = "/media/GIS-Data/gis_data/anna2.0"
+        base_path = "/run/media/pingaan/GIS Data/gis_data/anna2.0"
 
         paths = {
             "data_path": base_path,
@@ -92,10 +92,10 @@ def get_paths():
                 "estates.shp",
             ),
             "path_dem": os.path.normpath(
-                "/media/GIS-Data/gis_data/DEM_1m/"
+                "/run/media/pingaan/GIS Data/gis_data//DEM_1m/"
             ),
             "pot_path": os.path.join(
-                "/media/GIS-Data/gis_data",
+                "/run/media/pingaan/GIS Data/gis_data/",
                 "Potentiella fastigheter",
             ),
             "svg_path": (
@@ -111,5 +111,7 @@ def get_paths():
         raise OSError(
             f"Unsupported operating system: {os_name}"
         )
+
+    paths["dem_index_crs"] = "EPSG:3006"
 
     return paths

@@ -1,15 +1,57 @@
+import gc
+
 from qgis.core import QgsApplication, Qgis
+
+from scripts.terrain import (
+    create_terrain_grid,
+    extract_grid_dem_tiles,
+    calculate_slope_aspect,
+    extract_ineligible_terrain,
+    buffer_ineligible_points,
+    merge_ineligible_polygons_by_cell,
+    dissolve_ineligible_polygons,
+    buffer_ineligible_polygons,
+    merge_ineligible_polygons_by_aspect,
+    merge_buffered_ineligible_terrain,
+    save_aspect_outputs
+)
+
+from scripts.dem import (
+    select_dem_tiles,
+    merge_dem_tiles,
+    clip_dem_to_site,
+)
 
 from scripts.qgis_setup import initialize_qgis, shutdown_qgis
 from scripts.user_settings import UserSettings
 from scripts.paths import get_paths
+from scripts.crs import resolve_working_crs
+from scripts.site_context import (
+    create_site_buffers,
+    extract_neighbouring_estates,
+    group_neighbouring_estates,
+    dissolve_neighbouring_groups,
+    split_neighbouring_groups,
+    reproject_neighbouring_groups,
+    merge_neighbouring_groups,
+    subtract_analysis_site,
+    save_neighbouring_estates,
+    get_site_extent
+)
 from scripts.site_selection import (
     select_site_source,
     parse_estate,
     sequential_search,
+    extract_estate_features,
+    merge_estate_features,
+    dissolve_estate_features,
+    split_estate_to_singleparts,
+    reproject_estate,
+    calculate_estate_area
 )
 
-estate = ""
+
+estate = "ASKERSUND DALBY 1:80"
 
 custom_polygon = None
 
@@ -71,6 +113,192 @@ def main():
                     f"Estate located at indices: "
                     f"{row_indices}"
                 )
+            
+            site_data = extract_estate_features(
+                match=match,
+                row_indices=row_indices,
+                estates_layer_path=paths["estates_layer"],
+                output_root=paths["pot_path"],
+            )
+
+            merged_layer_path = merge_estate_features(
+                extracted_layers=site_data["extracted_layers"],
+                temp_path=site_data["temp_path"],
+            )
+
+            dissolved_layer_path = dissolve_estate_features(
+                merged_layer_path=merged_layer_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            singleparts_layer_path = split_estate_to_singleparts(
+                dissolved_layer_path=dissolved_layer_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            working_crs = resolve_working_crs(
+                settings=settings,
+                site_path=singleparts_layer_path,
+            )
+
+            reprojected_layer_path = reproject_estate(
+                singleparts_layer_path=singleparts_layer_path,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            working_crs = resolve_working_crs(
+                settings=settings,
+                site_path=singleparts_layer_path,
+            )
+
+            reprojected_layer_path = reproject_estate(
+                singleparts_layer_path=singleparts_layer_path,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            site_layer_path = calculate_estate_area(
+                reprojected_layer_path=reprojected_layer_path,
+                folder_path=site_data["folder_path"],
+            )
+
+            buffer_paths = create_site_buffers(
+                site_layer_path=site_layer_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            neighbouring_estates_path = extract_neighbouring_estates(
+                estates_layer_path=paths["estates_layer"],
+                hundred_m_buffer_path=buffer_paths["100m"],
+                folder_path=site_data["folder_path"],
+            )
+
+            neighbour_groups = group_neighbouring_estates(
+                neighbouring_estates_path=neighbouring_estates_path,
+            )
+
+            dissolved_neighbour_paths = dissolve_neighbouring_groups(
+                neighbour_groups=neighbour_groups,
+                temp_path=site_data["temp_path"],
+            )
+
+            singlepart_neighbour_paths = split_neighbouring_groups(
+                dissolved_neighbour_paths=dissolved_neighbour_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            reprojected_neighbour_paths = reproject_neighbouring_groups(
+                singlepart_neighbour_paths=singlepart_neighbour_paths,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            merged_neighbours_path = merge_neighbouring_groups(
+                reprojected_neighbour_paths=reprojected_neighbour_paths,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            neighbours_difference_path = subtract_analysis_site(
+                merged_neighbours_path=merged_neighbours_path,
+                site_layer_path=site_layer_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            final_neighbours_path = save_neighbouring_estates(
+                neighbours_difference_path=neighbours_difference_path,
+                folder_path=site_data["folder_path"],
+            )
+
+            site_extent = get_site_extent(
+                five_km_buffer_path=buffer_paths["5km"],
+            )
+
+            dem_tile_paths = select_dem_tiles(
+                site_extent=site_extent,
+                data_path=paths["data_path"],
+                dem_path=paths["path_dem"],
+                temp_path=site_data["temp_path"],
+                dem_index_crs=paths["dem_index_crs"],
+            )
+
+            merged_dem_path = merge_dem_tiles(
+                dem_tile_paths=dem_tile_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            clipped_dem_path = clip_dem_to_site(
+                merged_dem_path=merged_dem_path,
+                site_layer_path=site_layer_path,
+                folder_path=site_data["folder_path"],
+                target_crs=working_crs,
+            )
+
+            terrain_grid_path = create_terrain_grid(
+                site_layer_path=site_layer_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            terrain_dem_paths = extract_grid_dem_tiles(
+                terrain_grid_path=terrain_grid_path,
+                clipped_dem_path=clipped_dem_path,
+                temp_path=site_data["temp_path"],
+            )
+
+            terrain_results = calculate_slope_aspect(
+                terrain_dem_paths=terrain_dem_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            ineligible_point_paths = extract_ineligible_terrain(
+                terrain_results=terrain_results,
+                temp_path=site_data["temp_path"],
+                slope_thresholds=settings.slope_thresholds,
+            )
+
+            ineligible_polygon_paths = buffer_ineligible_points(
+                ineligible_point_paths=ineligible_point_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            merged_ineligible_paths = merge_ineligible_polygons_by_cell(
+                ineligible_polygon_paths=ineligible_polygon_paths,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            dissolved_ineligible_paths = dissolve_ineligible_polygons(
+                merged_ineligible_paths=merged_ineligible_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            buffered_ineligible_paths = buffer_ineligible_polygons(
+                dissolved_ineligible_paths=dissolved_ineligible_paths,
+                temp_path=site_data["temp_path"],
+            )
+
+            aspect_polygon_paths = merge_ineligible_polygons_by_aspect(
+                ineligible_polygon_paths=ineligible_polygon_paths,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            merged_ineligible_terrain_path = merge_buffered_ineligible_terrain(
+                buffered_ineligible_paths=buffered_ineligible_paths,
+                temp_path=site_data["temp_path"],
+                target_crs=working_crs,
+            )
+
+            final_aspect_paths = save_aspect_outputs(
+                aspect_polygon_paths=aspect_polygon_paths,
+                folder_path=site_data["folder_path"],
+            )
+
+            print(
+                f"Estate features extracted to: "
+                f"{site_data['temp_path']}"
+            )
 
         elif site_source["type"] == "custom_polygon":
 
@@ -79,6 +307,11 @@ def main():
             )
 
     finally:
+        # Release the dictionary holding the source layer and features
+        # while QGIS and its data providers are still available.
+        neighbour_groups = None
+
+        gc.collect()
 
         shutdown_qgis(qgs)
 

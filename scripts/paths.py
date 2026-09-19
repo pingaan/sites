@@ -12,7 +12,8 @@ def get_paths():
 
     if os_name == "Windows":
 
-        base_path = r"D:\Dropbox\GIS-data (sverige)\anna2.0"
+        gis_root = r"H:\gis_data"
+        base_path = os.path.join(gis_root, "anna2.0")
 
         paths = {
             "data_path": base_path,
@@ -24,15 +25,16 @@ def get_paths():
                 base_path,
                 "estates.shp",
             ),
-            "path_dem": os.path.normpath(
-                r"D:\Dropbox\GIS-data (sverige)\DEM_1m"
+            "path_dem": os.path.join(
+                gis_root,
+                "DEM_1m",
             ),
             "pot_path": os.path.join(
-                r"D:\Dropbox\GIS-data (sverige)",
+                gis_root,
                 "Potentiella fastigheter",
             ),
             "svg_path": (
-                r"C:\Program Files\QGIS 3.28.13"
+                r"C:\Program Files\QGIS 3.44.14"
                 r"\apps\qgis-ltr\svg\arrows\Arrow_05.svg"
             ),
             "empty_shapefile_path": os.path.join(

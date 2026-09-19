@@ -672,7 +672,7 @@ def process_solar_holes(
 
     output_path = os.path.join(
         temp_path,
-        "buildable_solar_no_holes.shp",
+        "solar_holes_filled.shp",
     )
 
     processing.run(

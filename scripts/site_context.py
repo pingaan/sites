@@ -539,34 +539,32 @@ def save_neighbouring_estates(
 
     return output_path
 
-def get_site_extent(five_km_buffer_path):
+def get_layer_extent(layer_path):
     """
-    Read the bounding extent of the 5 km buffer.
-
-    Return the coordinates and their CRS for later DEM selection.
+    Return a polygon layer's bounding coordinates and CRS.
     """
 
-    buffer_layer = QgsVectorLayer(
-        five_km_buffer_path,
-        "5 km buffer",
+    layer = QgsVectorLayer(
+        layer_path,
+        "Extent source",
         "ogr",
     )
 
-    if not buffer_layer.isValid():
+    if not layer.isValid():
         raise ValueError(
-            f"Failed to load buffer: {five_km_buffer_path}"
+            f"Failed to load extent source: {layer_path}"
         )
 
-    if not buffer_layer.crs().isValid():
+    if not layer.crs().isValid():
         raise ValueError(
-            "The buffer has no valid CRS."
+            f"Extent source has no valid CRS: {layer_path}"
         )
 
-    extent = buffer_layer.extent()
+    extent = layer.extent()
 
-    if buffer_layer.featureCount() == 0 or extent.isEmpty():
+    if layer.featureCount() == 0 or extent.isEmpty():
         raise ValueError(
-            "The buffer has no usable extent."
+            f"Extent source has no usable extent: {layer_path}"
         )
 
     extent_data = {
@@ -574,11 +572,11 @@ def get_site_extent(five_km_buffer_path):
         "y_min": extent.yMinimum(),
         "x_max": extent.xMaximum(),
         "y_max": extent.yMaximum(),
-        "crs": buffer_layer.crs(),
+        "crs": layer.crs(),
     }
 
     print(
-        f"5 km buffer extent "
+        f"Extent of {os.path.basename(layer_path)} "
         f"({extent_data['crs'].authid()}): "
         f"x={extent_data['x_min']:.2f}"
         f" to {extent_data['x_max']:.2f}, "

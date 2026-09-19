@@ -1113,3 +1113,364 @@ def save_aspect_outputs(
         )
 
     return final_paths
+
+def clean_ineligible_terrain(
+    merged_ineligible_terrain_path,
+    temp_path,
+):
+    """
+    Apply Anna's terrain-cleanup buffers in sequence:
+    +2 m, -7 m, then +4 m.
+
+    Preserve the working CRS and convert distances from metres.
+    Return None when no ineligible terrain was supplied.
+    """
+
+    if merged_ineligible_terrain_path is None:
+        print("No ineligible terrain to clean.")
+        return None
+
+    layer = QgsVectorLayer(
+        merged_ineligible_terrain_path,
+        "Merged ineligible terrain",
+        "ogr",
+    )
+
+    if not layer.isValid():
+        raise ValueError(
+            f"Failed to load terrain: "
+            f"{merged_ineligible_terrain_path}"
+        )
+
+    crs = layer.crs()
+
+    if not crs.isValid() or crs.isGeographic():
+        raise ValueError(
+            "Terrain cleanup requires a valid projected CRS."
+        )
+
+    if crs.mapUnits() == Qgis.DistanceUnit.Unknown:
+        raise ValueError(
+            "The terrain layer has unknown measurement units."
+        )
+
+    units_per_metre = QgsUnitTypes.fromUnitToUnitFactor(
+        Qgis.DistanceUnit.Meters,
+        crs.mapUnits(),
+    )
+
+    # Subsequent processing uses file paths.
+    layer = None
+
+    input_path = merged_ineligible_terrain_path
+
+    for distance_metres, filename in (
+        (2, "big_buffer.shp"),
+        (-7, "neg_buffer.shp"),
+        (4, "four_buffer.shp"),
+    ):
+        output_path = os.path.join(
+            temp_path,
+            filename,
+        )
+
+        processing.run(
+            "native:buffer",
+            {
+                "INPUT": input_path,
+                "DISTANCE": distance_metres * units_per_metre,
+                "SEGMENTS": 5,
+                "END_CAP_STYLE": 0,
+                "JOIN_STYLE": 0,
+                "MITER_LIMIT": 2,
+                "DISSOLVE": False,
+                "OUTPUT": output_path,
+            },
+        )
+
+        processing.run(
+            "native:createspatialindex",
+            {
+                "INPUT": output_path,
+            },
+        )
+
+        print(
+            f"Terrain cleanup buffer {distance_metres:+g} m: "
+            f"{output_path}"
+        )
+
+        input_path = output_path
+
+    return input_path
+
+def split_cleaned_terrain(
+    cleaned_ineligible_terrain_path,
+    temp_path,
+):
+    """
+    Convert cleaned ineligible terrain into singlepart features.
+
+    Return None when no input exists or no patches remain.
+    """
+
+    if cleaned_ineligible_terrain_path is None:
+        print("No cleaned ineligible terrain to split.")
+        return None
+
+    output_path = os.path.join(
+        temp_path,
+        "bad_slopes_single.shp",
+    )
+
+    processing.run(
+        "native:multiparttosingleparts",
+        {
+            "INPUT": cleaned_ineligible_terrain_path,
+            "OUTPUT": output_path,
+        },
+    )
+
+    processing.run(
+        "native:createspatialindex",
+        {
+            "INPUT": output_path,
+        },
+    )
+
+    layer = QgsVectorLayer(
+        output_path,
+        "Singlepart ineligible terrain",
+        "ogr",
+    )
+
+    if not layer.isValid():
+        raise RuntimeError(
+            f"Failed to load singlepart terrain: {output_path}"
+        )
+
+    patch_count = layer.featureCount()
+
+    if patch_count == 0:
+        print("No ineligible terrain patches remain after cleanup.")
+        return None
+
+    print(
+        f"Cleaned terrain split into {patch_count} patches: "
+        f"{output_path}"
+    )
+
+    return output_path
+
+def filter_ineligible_terrain_by_area(
+    singlepart_ineligible_terrain_path,
+    temp_path,
+    folder_path,
+    min_area_m2,
+):
+    """
+    Calculate patch areas in square metres and retain patches
+    strictly larger than the configured threshold.
+
+    Return None when no input exists or no patches qualify.
+    """
+
+    if singlepart_ineligible_terrain_path is None:
+        print("No ineligible terrain patches to filter.")
+        return None
+
+    min_area_m2 = float(min_area_m2)
+
+    if not np.isfinite(min_area_m2) or min_area_m2 < 0:
+        raise ValueError(
+            "The minimum patch area must be finite and non-negative."
+        )
+
+    layer = QgsVectorLayer(
+        singlepart_ineligible_terrain_path,
+        "Ineligible terrain patches",
+        "ogr",
+    )
+
+    if not layer.isValid():
+        raise ValueError(
+            "Failed to load the singlepart terrain patches."
+        )
+
+    crs = layer.crs()
+
+    if not crs.isValid() or crs.isGeographic():
+        raise ValueError(
+            "Patch-area calculation requires a valid projected CRS."
+        )
+
+    if crs.mapUnits() == Qgis.DistanceUnit.Unknown:
+        raise ValueError(
+            "The terrain layer has unknown measurement units."
+        )
+
+    metres_per_unit = QgsUnitTypes.fromUnitToUnitFactor(
+        crs.mapUnits(),
+        Qgis.DistanceUnit.Meters,
+    )
+
+    square_metres_per_unit = metres_per_unit ** 2
+
+    area_path = os.path.join(
+        temp_path,
+        "field_calc.shp",
+    )
+
+    processing.run(
+        "native:fieldcalculator",
+        {
+            "INPUT": layer,
+            "FIELD_NAME": "area",
+            "FIELD_TYPE": 0,
+            "FIELD_LENGTH": 20,
+            "FIELD_PRECISION": 6,
+            "FORMULA": (
+                f"area($geometry) * {square_metres_per_unit!r}"
+            ),
+            "OUTPUT": area_path,
+        },
+    )
+
+    processing.run(
+        "native:createspatialindex",
+        {
+            "INPUT": area_path,
+        },
+    )
+
+    output_path = os.path.join(
+        folder_path,
+        "bad_slopes_area.shp",
+    )
+
+    processing.run(
+        "native:extractbyexpression",
+        {
+            "INPUT": area_path,
+            "EXPRESSION": f'"area" > {min_area_m2!r}',
+            "OUTPUT": output_path,
+        },
+    )
+
+    processing.run(
+        "native:createspatialindex",
+        {
+            "INPUT": output_path,
+        },
+    )
+
+    filtered_layer = QgsVectorLayer(
+        output_path,
+        "Filtered ineligible terrain",
+        "ogr",
+    )
+
+    if not filtered_layer.isValid():
+        raise RuntimeError(
+            f"Failed to load filtered terrain: {output_path}"
+        )
+
+    patch_count = filtered_layer.featureCount()
+
+    print(
+        f"Ineligible patches larger than {min_area_m2:g} m²: "
+        f"{patch_count}"
+    )
+
+    if patch_count == 0:
+        return None
+
+    return output_path
+
+def create_contour_lines(
+    merged_dem_path,
+    temp_path,
+    folder_path,
+    target_crs,
+    interval_m,
+):
+    """
+    Create elevation contours from the merged DEM, whose
+    elevation values are in metres.
+
+    Save the final contour lines in the analysis working CRS.
+    """
+
+    interval_m = float(interval_m)
+
+    if not np.isfinite(interval_m) or interval_m <= 0:
+        raise ValueError(
+            "The contour interval must be finite and greater than zero."
+        )
+
+    if not os.path.isfile(merged_dem_path):
+        raise FileNotFoundError(
+            f"Merged DEM not found: {merged_dem_path}"
+        )
+
+    source_contours_path = os.path.join(
+        temp_path,
+        "contour_lines_source.shp",
+    )
+
+    print(
+        f"Creating contour lines at {interval_m:g} m intervals..."
+    )
+
+    processing.run(
+        "gdal:contour",
+        {
+            "INPUT": merged_dem_path,
+            "BAND": 1,
+            "INTERVAL": interval_m,
+            "FIELD_NAME": "ELEV",
+            "CREATE_3D": False,
+            "IGNORE_NODATA": False,
+            "OFFSET": 0,
+            "OUTPUT": source_contours_path,
+        },
+    )
+
+    output_path = os.path.join(
+        folder_path,
+        "contour_lines.shp",
+    )
+
+    processing.run(
+        "native:reprojectlayer",
+        {
+            "INPUT": source_contours_path,
+            "TARGET_CRS": target_crs,
+            "OUTPUT": output_path,
+        },
+    )
+
+    processing.run(
+        "native:createspatialindex",
+        {
+            "INPUT": output_path,
+        },
+    )
+
+    contours = QgsVectorLayer(
+        output_path,
+        "Contour lines",
+        "ogr",
+    )
+
+    if not contours.isValid():
+        raise RuntimeError(
+            f"Failed to load contour lines: {output_path}"
+        )
+
+    print(
+        f"Contour lines saved: {contours.featureCount()} features "
+        f"({contours.crs().authid()}) — {output_path}"
+    )
+
+    return output_path

@@ -31,13 +31,20 @@ def initialize_qgis(gui=False):
     qgs = QgsApplication([], gui)
     qgs.initQgis()
 
-    processing_path = os.path.join(
-        qgis_prefix,
-        "share",
-        "qgis",
-        "python",
-        "plugins",
-    )
+    if sys.platform == "win32":
+        processing_path = os.path.join(
+            qgis_prefix,
+            "python",
+            "plugins",
+        )
+    else:
+        processing_path = os.path.join(
+            qgis_prefix,
+            "share",
+            "qgis",
+            "python",
+            "plugins",
+        )
 
     if processing_path not in sys.path:
         sys.path.append(processing_path)

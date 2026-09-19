@@ -21,9 +21,9 @@ def select_dem_tiles(
     dem_index_crs,
 ):
     """
-    Select DEM tiles using Anna's CSV coordinate-selection rule.
+    Select DEM tiles whose bounds overlap the analysis site extent.
 
-    Transform the search extent into the DEM index CRS,
+    Transform the site extent into the DEM index CRS,
     then copy matching files into temp/clip.
     """
 
@@ -79,17 +79,30 @@ def select_dem_tiles(
     index["x"] = pd.to_numeric(index["x"], errors="raise")
     index["y"] = pd.to_numeric(index["y"], errors="raise")
 
-    # Preserve Anna's strict point-within-extent selection.
+    # Dataset layout: 2,500 m square tiles, indexed by
+    # their upper-left corner in the DEM index CRS.
+    tile_size_m = 2500.0
+
+    # The CSV coordinates include a tiny offset (0.00011 m).
+    # Allow 1 mm tolerance when comparing boundaries.
+    tolerance_m = 0.001
+
+    tile_x_min = index["x"]
+    tile_x_max = index["x"] + tile_size_m
+    tile_y_min = index["y"] - tile_size_m
+    tile_y_max = index["y"]
+
+    # Select every tile whose bounds overlap the site extent.
     selected = index.loc[
-        (index["x"] > search_extent.xMinimum())
-        & (index["x"] < search_extent.xMaximum())
-        & (index["y"] > search_extent.yMinimum())
-        & (index["y"] < search_extent.yMaximum())
+        (tile_x_max >= search_extent.xMinimum() - tolerance_m)
+        & (tile_x_min <= search_extent.xMaximum() + tolerance_m)
+        & (tile_y_max >= search_extent.yMinimum() - tolerance_m)
+        & (tile_y_min <= search_extent.yMaximum() + tolerance_m)
     ]
 
     if selected.empty:
         raise ValueError(
-            "No DEM index coordinates fall inside the search extent."
+            "No DEM tiles overlap the analysis site extent."
         )
 
     if selected["FILENAME"].isna().any():

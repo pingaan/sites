@@ -1,16 +1,8 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-
-    "python.terminal.activateEnvironment": true,
-
+    "python.defaultInterpreterPath": "C:/Program Files/QGIS 3.44.14/bin/python3.exe",
+    "python.terminal.activateEnvironment": false,
     "python.analysis.extraPaths": [
-        "/usr/lib/python3/dist-packages",
-        "/usr/share/qgis/python",
-        "/usr/share/qgis/python/plugins"
-    ],
-
-    "terminal.integrated.env.linux": {
-        "QGIS_PREFIX_PATH": "/usr",
-        "PYTHONPATH": "/usr/share/qgis/python:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages"
-    }
+        "C:/Program Files/QGIS 3.44.14/apps/qgis-ltr/python",
+        "C:/Program Files/QGIS 3.44.14/apps/qgis-ltr/python/plugins"
+    ]
 }

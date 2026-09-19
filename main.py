@@ -78,7 +78,7 @@ from scripts.site_selection import (
 )
 
 
-estate = "ASKERSUND DALBY 1:80"
+estate = "kävlinge ålstorp 19:63"
 
 custom_polygon = None
 

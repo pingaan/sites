@@ -10,6 +10,9 @@ from scripts.map_project import (
     prepare_map_project,
     add_basemaps,
     add_analysis_outputs,
+    add_supporting_outputs,
+    add_country_outputs,
+    save_map_project,
 )
 from scripts.constraints import (
     clip_country_layers,
@@ -419,11 +422,6 @@ def main():
                 technology="solar",
             )
 
-            wind_summary = calculate_candidate_areas(
-                candidate_path=wind_candidate_path,
-                technology="wind",
-            )
-
             wind_remaining_path = subtract_wind_constraints(
                 site_layer_path=site_layer_path,
                 country_layer_outputs=country_layer_outputs,
@@ -438,6 +436,11 @@ def main():
             wind_candidate_path = save_wind_candidate_parts(
                 wind_dissolved_path=wind_dissolved_path,
                 folder_path=site_data["folder_path"],
+            )
+
+            wind_summary = calculate_candidate_areas(
+                candidate_path=wind_candidate_path,
+                technology="wind",
             )
 
             map_data = prepare_map_project(
@@ -455,6 +458,29 @@ def main():
                 site_layer_path=site_layer_path,
                 solar_candidate_path=solar_candidate_path,
                 wind_candidate_path=wind_candidate_path,
+            )
+
+            country_map_layer_ids = add_country_outputs(
+                map_data=map_data,
+                country_layer_outputs=country_layer_outputs,
+                style_resolver=getattr(
+                    country_config,
+                    "get_map_style",
+                    None,
+                ),
+            )
+
+            supporting_layer_ids = add_supporting_outputs(
+                map_data=map_data,
+                neighbouring_estates_path=final_neighbours_path,
+                ineligible_terrain_path=filtered_ineligible_terrain_path,
+                contour_lines_path=contour_lines_path,
+            )
+
+            project_path = save_map_project(
+                map_data=map_data,
+                folder_path=site_data["folder_path"],
+                folder_name=site_data["folder_name"],
             )
 
             print(

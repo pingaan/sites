@@ -16,8 +16,10 @@
             "problemMatcher": [],
             "presentation": {
                 "reveal": "always",
-                "panel": "dedicated",
-                "clear": true
+                "panel": "shared",
+                "clear": false,
+                "close": false,
+                "showReuseMessage": false
             },
             "runOptions": {
                 "instanceLimit": 1

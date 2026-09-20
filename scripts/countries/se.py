@@ -309,6 +309,96 @@ LAYERS = [
     ),
 ]
 
+MAP_COLORS = {
+    "powerlines-300-500.shp": "#ff0004",
+    "powerlines-underground.shp": "#ff2bb8",
+    "powerlines-170-220.shp": "#cb00c8",
+    "powerlines-80-170.shp": "#0000ff",
+    "powerlines-10-80.shp": "#00ff88",
+    "powerlines-null.shp": "#e18e00",
+    "estates.shp": "#000000",
+    "soil_types.shp": "#000000",
+    "power_stations_poly.shp": "#37ff00",
+    "nature_memory_points_poly.shp": "#ff73b9",
+    "misc_poly.shp": "#8c8c8c",
+    "hiking_trails.shp": "#ff2693",
+    "peat_extractions_poly.shp": "#b7484b",
+    "weather_station_temp_poly.shp": "#00b7cf",
+    "weather_station_wind_poly.shp": "#00a1b3",
+    "railway.shp": "#474747",
+    "roads.shp": "#999999",
+    "bike_lane.shp": "#e9f0e4",
+    "rest_stop_poly.shp": "#00cf98",
+    "swamp_forest.shp": "#f67fff",
+    "vmi_low.shp": "#f673ff",
+    "cultural_reserve.shp": "#0004ff",
+    "outdoor_life_areas.shp": "#a200f3",
+    "protected_water_courses.shp": "#006eff",
+    "noble_forest.shp": "#19b800",
+    "water_flow_poly.shp": "#006eff",
+    "water_courses.shp": "#006eff",
+    "water_surfaces.shp": "#006eff",
+    "ancient_remains_points_poly.shp": "#fff761",
+    "ancient_remains_lines.shp": "#fff761",
+    "ancient_remains_polygons.shp": "#fff761",
+    "landslide_slope-instability.shp": "#ff0004",
+    "natura2000.shp": "#ffb2d7",
+    "inaccessable.shp": "#ffa6d1",
+    "rich_birdlife.shp": "#ff99ca",
+    "biotopes.shp": "#ff8cc4",
+    "sensitive_wilderness.shp": "#ff66b3",
+    "protected_state_forests.shp": "#ff59ac",
+    "wildlife_preserve.shp": "#ff4ca6",
+    "nature_reserves.shp": "#ff40a0",
+    "nature_conservations.shp": "#ff3399",
+    "nature_memory_polygons.shp": "#ff73b9",
+    "vmi_very_high.shp": "#f64cff",
+    "vmi_high.shp": "#f459ff",
+    "wet_soil.shp": "#f58cff",
+    "military_areas.shp": "#00e8bd",
+    "arable_land.shp": "#b97b3e",
+    "grazing_areas.shp": "#b6ad00",
+    "reindeer_info.shp": "#8e8571",
+    "residental_buildings.shp": "#b2b2b2",
+    "accessory_building.shp": "#a6a6a6",
+    "barn.shp": "#a6a6a6",
+    "other_building.shp": "#999999",
+    "facilities.shp": "#8c8c8c",
+    "industry.shp": "#808080",
+    "public_function.shp": "#737373",
+    "air_trafic_areas.shp": "#1ca600",
+    "helicopterpads.shp": "#1ca600",
+    "landing_strips.shp": "#179900",
+    "minor_airports.shp": "#138c00",
+    "major_airports.shp": "#118000",
+    "ditches.gpkg": "#006eff",
+    "municip_borders.shp": "#00e8bd",
+}
+
+
+HIDDEN_MAP_LAYERS = {
+    "soil_types.shp",
+    "roads.shp",
+}
+
+
+def get_map_style(layer_definition):
+    """
+    Return Sweden-specific display settings for a country layer.
+    """
+
+    source_name = os.path.basename(
+        layer_definition["source"]
+    )
+
+    return {
+        "color": MAP_COLORS.get(
+            source_name,
+            "#d27800",
+        ),
+        "visible": source_name not in HIDDEN_MAP_LAYERS,
+    }
+
 # These datasets represent points stored as polygons in Anna's data.
 # Values specify the exported centroid filenames.
 CENTROID_OUTPUTS = {

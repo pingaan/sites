@@ -553,6 +553,7 @@ def subtract_ineligible_terrain(
     solar_remaining_path,
     filtered_ineligible_terrain_path,
     temp_path,
+    output_filename="almost_done_solar.shp",
 ):
     """
     Remove filtered ineligible terrain from the remaining estate.
@@ -867,10 +868,10 @@ def save_solar_candidate_parts(
     folder_path,
 ):
     """
-    Convert the dissolved solar candidate area to singleparts
-    and save it in the estate's main output folder.
+    Convert the dissolved solar candidate area to singleparts,
+    remove empty geometry, and save it in the estate output folder.
 
-    Each separate polygon becomes its own feature.
+    Each valid polygon becomes its own feature.
     """
 
     output_path = os.path.join(
@@ -878,10 +879,19 @@ def save_solar_candidate_parts(
         "buildable_solar.shp",
     )
 
-    processing.run(
+    singleparts_result = processing.run(
         "native:multiparttosingleparts",
         {
             "INPUT": solar_dissolved_path,
+            "OUTPUT": "TEMPORARY_OUTPUT",
+        },
+    )
+
+    processing.run(
+        "native:extractbyexpression",
+        {
+            "INPUT": singleparts_result["OUTPUT"],
+            "EXPRESSION": "$area > 0",
             "OUTPUT": output_path,
         },
     )
@@ -1083,10 +1093,10 @@ def save_wind_candidate_parts(
     folder_path,
 ):
     """
-    Convert the dissolved wind candidate area to singleparts
-    and save it in the estate's main output folder.
+    Convert the dissolved wind candidate area to singleparts,
+    remove empty geometry, and save it in the estate output folder.
 
-    Each separate polygon becomes its own feature.
+    Each valid polygon becomes its own feature.
     """
 
     output_path = os.path.join(
@@ -1094,10 +1104,19 @@ def save_wind_candidate_parts(
         "buildable_wind.shp",
     )
 
-    processing.run(
+    singleparts_result = processing.run(
         "native:multiparttosingleparts",
         {
             "INPUT": wind_dissolved_path,
+            "OUTPUT": "TEMPORARY_OUTPUT",
+        },
+    )
+
+    processing.run(
+        "native:extractbyexpression",
+        {
+            "INPUT": singleparts_result["OUTPUT"],
+            "EXPRESSION": "$area > 0",
             "OUTPUT": output_path,
         },
     )

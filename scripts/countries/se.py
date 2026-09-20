@@ -375,6 +375,67 @@ MAP_COLORS = {
     "municip_borders.shp": "#00e8bd",
 }
 
+MAP_SPECIALS = {
+    "powerlines-300-500.shp": "wide_line",
+    "powerlines-underground.shp": "wide_line",
+    "powerlines-170-220.shp": "wide_line",
+    "powerlines-80-170.shp": "wide_line",
+    "powerlines-10-80.shp": "wide_line",
+    "powerlines-null.shp": "wide_line",
+
+    "estates.shp": "dotted",
+    "soil_types.shp": "soil",
+
+    "power_stations_poly.shp": "remove_poly_suffix",
+    "nature_memory_points_poly.shp": "remove_poly_suffix",
+    "misc_poly.shp": "remove_poly_suffix",
+    "peat_extractions_poly.shp": "remove_poly_suffix",
+    "weather_station_temp_poly.shp": "remove_poly_suffix",
+    "weather_station_wind_poly.shp": "remove_poly_suffix",
+    "rest_stop_poly.shp": "remove_poly_suffix",
+    "ancient_remains_points_poly.shp": "remove_poly_suffix",
+
+    "hiking_trails.shp": "walking",
+    "railway.shp": "rail",
+    "bike_lane.shp": "bike",
+
+    "swamp_forest.shp": "forward_hatch",
+    "noble_forest.shp": "forward_hatch",
+    "municip_borders.shp": "forward_hatch",
+
+    "vmi_low.shp": "backward_hatch",
+    "cultural_reserve.shp": "backward_hatch",
+    "outdoor_life_areas.shp": "backward_hatch",
+    "protected_water_courses.shp": "backward_hatch",
+    "minor_airports.shp": "backward_hatch",
+    "major_airports.shp": "backward_hatch",
+
+    "water_flow_poly.shp": "arrow",
+    "water_courses.shp": "wide_line",
+
+    "water_surfaces.shp": "transparent_15",
+    "ancient_remains_polygons.shp": "transparent_15",
+    "landslide_slope-instability.shp": "transparent_15",
+    "natura2000.shp": "transparent_15",
+    "inaccessable.shp": "transparent_15",
+    "rich_birdlife.shp": "transparent_15",
+    "biotopes.shp": "transparent_15",
+    "sensitive_wilderness.shp": "transparent_15",
+    "protected_state_forests.shp": "transparent_15",
+    "wildlife_preserve.shp": "transparent_15",
+    "nature_reserves.shp": "transparent_15",
+    "nature_conservations.shp": "transparent_15",
+    "nature_memory_polygons.shp": "transparent_15",
+    "vmi_very_high.shp": "transparent_15",
+    "vmi_high.shp": "transparent_15",
+    "wet_soil.shp": "transparent_15",
+    "military_areas.shp": "transparent_15",
+    "arable_land.shp": "transparent_15",
+    "grazing_areas.shp": "transparent_15",
+    "reindeer_info.shp": "transparent_15",
+    "helicopterpads.shp": "transparent_15",
+    "landing_strips.shp": "transparent_15",
+}
 
 HIDDEN_MAP_LAYERS = {
     "soil_types.shp",
@@ -397,6 +458,10 @@ def get_map_style(layer_definition):
             "#d27800",
         ),
         "visible": source_name not in HIDDEN_MAP_LAYERS,
+        "special": MAP_SPECIALS.get(
+            source_name,
+            "none",
+        ),
     }
 
 # These datasets represent points stored as polygons in Anna's data.
@@ -417,3 +482,8 @@ for definition in LAYERS:
     definition["centroid_output"] = CENTROID_OUTPUTS.get(
         definition["source"]
     )
+
+SITE_SUMMARY = {
+    "tariff_zone_field": "TARIFFZONE",
+    "tariff_zone_prefix": "SE",
+}

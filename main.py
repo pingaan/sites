@@ -1,5 +1,6 @@
 import gc
 
+from scripts.reporting import create_site_summary
 from qgis.core import (QgsApplication, 
     Qgis, 
     QgsProject
@@ -468,6 +469,7 @@ def main():
                     "get_map_style",
                     None,
                 ),
+                svg_path=paths["svg_path"],
             )
 
             supporting_layer_ids = add_supporting_outputs(
@@ -481,6 +483,17 @@ def main():
                 map_data=map_data,
                 folder_path=site_data["folder_path"],
                 folder_name=site_data["folder_name"],
+            )
+
+            site_summary = create_site_summary(
+                site_layer_path=site_layer_path,
+                folder_path=site_data["folder_path"],
+                folder_name=site_data["folder_name"],
+                summary_settings=getattr(
+                    country_config,
+                    "SITE_SUMMARY",
+                    None,
+                ),
             )
 
             print(

@@ -1,13 +1,27 @@
 import os
 
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
 from urllib.parse import urlencode
 from qgis.core import (
     QgsFillSymbol,
     QgsLineSymbol,
     QgsMarkerSymbol,
     QgsSingleSymbolRenderer,
+    QgsSimpleFillSymbolLayer,
     QgsVectorLayer,
     QgsWkbTypes,
+    QgsSymbol,
+    QgsWkbTypes,
+    QgsCategorizedSymbolRenderer,
+    QgsRendererCategory,
+    QgsMarkerSymbol,
+    QgsProperty,
+    QgsSvgMarkerSymbolLayer,
+    QgsSymbolLayer
+    QgsLineSymbol,
+    QgsSimpleLineSymbolLayer,
+    QgsMarkerLineSymbolLayer
 )
 
 
@@ -378,10 +392,442 @@ def add_supporting_outputs(
 
     return layer_ids
 
+def create_marker_line_symbol(
+    color,
+    marker_size,
+    interval,
+):
+    """
+    Create a line represented by repeated markers.
+    """
+
+    marker_symbol = QgsMarkerSymbol.createSimple(
+        {
+            "name": "circle",
+            "color": color,
+            "outline_color": color,
+            "size": str(marker_size),
+        }
+    )
+
+    marker_layer = QgsMarkerLineSymbolLayer()
+    marker_layer.setInterval(interval)
+    marker_layer.setSubSymbol(
+        marker_symbol
+    )
+
+    line_symbol = QgsLineSymbol()
+
+    line_symbol.changeSymbolLayer(
+        0,
+        marker_layer,
+    )
+
+    return line_symbol
+
+def apply_country_layer_style(
+    layer,
+    style,
+    svg_path=None,
+):
+    """
+    Apply the general and special map styling supplied by
+    the active country configuration.
+    """
+
+    color = style.get(
+        "color",
+        "#d27800",
+    )
+
+    special = style.get(
+        "special",
+        "none",
+    )
+
+    geometry_type = layer.geometryType()
+
+    # ---------------------------------------------------------
+    # Display-name adjustment
+    # ---------------------------------------------------------
+
+    if special == "remove_poly_suffix":
+        layer.setName(
+            layer.name().replace(
+                "_poly",
+                "",
+            )
+        )
+
+    # ---------------------------------------------------------
+    # Dotted estate boundaries
+    # ---------------------------------------------------------
+
+    if (
+        special == "dotted"
+        and geometry_type == QgsWkbTypes.PolygonGeometry
+    ):
+        symbol = QgsFillSymbol.createSimple(
+            {
+                "style": "no",
+                "outline_style": "dash",
+                "outline_color": "#cccccc",
+                "outline_width": "0.1",
+            }
+        )
+
+        layer.setRenderer(
+            QgsSingleSymbolRenderer(symbol)
+        )
+
+        return
+
+    # ---------------------------------------------------------
+    # Walking-trail marker line
+    # ---------------------------------------------------------
+
+    if (
+        special == "walking"
+        and geometry_type == QgsWkbTypes.LineGeometry
+    ):
+        walking_symbol = create_marker_line_symbol(
+            color=color,
+            marker_size=0.8,
+            interval=3.0,
+        )
+
+        layer.setRenderer(
+            QgsSingleSymbolRenderer(
+                walking_symbol
+            )
+        )
+
+        return
+
+    # ---------------------------------------------------------
+    # Railway marker line
+    # ---------------------------------------------------------
+
+    if (
+        special == "rail"
+        and geometry_type == QgsWkbTypes.LineGeometry
+    ):
+        rail_symbol = create_marker_line_symbol(
+            color=color,
+            marker_size=2.4,
+            interval=4.0,
+        )
+
+        layer.setRenderer(
+            QgsSingleSymbolRenderer(
+                rail_symbol
+            )
+        )
+
+        return
+
+    # ---------------------------------------------------------
+    # Cased bicycle-route lines
+    # ---------------------------------------------------------
+
+    if (
+        special == "bike"
+        and geometry_type == QgsWkbTypes.LineGeometry
+    ):
+        outer_line = QgsSimpleLineSymbolLayer.create(
+            {
+                "color": "black",
+                "width": "2",
+                "joinstyle": "round",
+                "capstyle": "round",
+            }
+        )
+
+        inner_line = QgsSimpleLineSymbolLayer.create(
+            {
+                "color": color,
+                "width": "1.46",
+                "joinstyle": "round",
+                "capstyle": "round",
+            }
+        )
+
+        bike_symbol = QgsLineSymbol()
+
+        bike_symbol.changeSymbolLayer(
+            0,
+            outer_line,
+        )
+
+        bike_symbol.appendSymbolLayer(
+            inner_line
+        )
+
+        layer.setRenderer(
+            QgsSingleSymbolRenderer(
+                bike_symbol
+            )
+        )
+
+        return
+
+    # ---------------------------------------------------------
+    # Directional water-flow arrows
+    # ---------------------------------------------------------
+
+    if (
+        special == "arrow"
+        and geometry_type == QgsWkbTypes.PointGeometry
+    ):
+        if (
+            svg_path is None
+            or not os.path.isfile(svg_path)
+        ):
+            print(
+                f"Arrow styling skipped for {layer.name()}: "
+                f"SVG file was not found."
+            )
+
+        else:
+            svg_layer = QgsSvgMarkerSymbolLayer(
+                svg_path
+            )
+
+            svg_layer.setSize(5)
+
+            if (
+                layer.fields().indexFromName(
+                    "DIRECTION"
+                )
+                != -1
+            ):
+                svg_layer.setDataDefinedProperty(
+                    QgsSymbolLayer.PropertyAngle,
+                    QgsProperty.fromExpression(
+                        '"DIRECTION"'
+                    ),
+                )
+
+            else:
+                print(
+                    f"Direction field not found for "
+                    f"{layer.name()}; arrows will not "
+                    f"be rotated."
+                )
+
+            arrow_symbol = QgsMarkerSymbol()
+
+            arrow_symbol.changeSymbolLayer(
+                0,
+                svg_layer,
+            )
+
+            layer.setRenderer(
+                QgsSingleSymbolRenderer(
+                    arrow_symbol
+                )
+            )
+
+            layer.setName(
+                layer.name().replace(
+                    "_poly",
+                    "",
+                )
+            )
+
+            return
+
+    # ---------------------------------------------------------
+    # Categorized soil types
+    # ---------------------------------------------------------
+
+    if special == "soil":
+
+        field_name = "TYPE"
+        field_index = layer.fields().indexFromName(
+            field_name
+        )
+
+        if field_index == -1:
+            print(
+                f"Soil styling skipped for {layer.name()}: "
+                f"field '{field_name}' was not found."
+            )
+
+        else:
+            unique_values = sorted(
+                layer.dataProvider().uniqueValues(
+                    field_index
+                ),
+                key=str,
+            )
+
+            categories = []
+
+            start_color = QColor("#e6a55c")
+            end_color = QColor("#5e3506")
+
+            denominator = max(
+                len(unique_values) - 1,
+                1,
+            )
+
+            for index, value in enumerate(
+                unique_values
+            ):
+                fraction = index / denominator
+
+                red = round(
+                    start_color.red()
+                    + (
+                        end_color.red()
+                        - start_color.red()
+                    )
+                    * fraction
+                )
+
+                green = round(
+                    start_color.green()
+                    + (
+                        end_color.green()
+                        - start_color.green()
+                    )
+                    * fraction
+                )
+
+                blue = round(
+                    start_color.blue()
+                    + (
+                        end_color.blue()
+                        - start_color.blue()
+                    )
+                    * fraction
+                )
+
+                category_symbol = (
+                    QgsSymbol.defaultSymbol(
+                        geometry_type
+                    )
+                )
+
+                if category_symbol is None:
+                    continue
+
+                category_symbol.setColor(
+                    QColor(
+                        red,
+                        green,
+                        blue,
+                    )
+                )
+
+                categories.append(
+                    QgsRendererCategory(
+                        value,
+                        category_symbol,
+                        str(value),
+                    )
+                )
+
+            layer.setRenderer(
+                QgsCategorizedSymbolRenderer(
+                    field_name,
+                    categories,
+                )
+            )
+
+            return
+
+    # ---------------------------------------------------------
+    # Start with the normal symbol for this geometry type
+    # ---------------------------------------------------------
+
+    symbol = QgsSymbol.defaultSymbol(
+        geometry_type
+    )
+
+    if symbol is None:
+        print(
+            f"No default symbol available for: "
+            f"{layer.name()}"
+        )
+        return
+
+    symbol.setColor(
+        QColor(color)
+    )
+
+    # ---------------------------------------------------------
+    # Wide line
+    # ---------------------------------------------------------
+
+    if (
+        special == "wide_line"
+        and geometry_type == QgsWkbTypes.LineGeometry
+    ):
+        symbol_layer = symbol.symbolLayer(0)
+
+        if hasattr(symbol_layer, "setWidth"):
+            symbol_layer.setWidth(1.1)
+
+    # ---------------------------------------------------------
+    # 15% transparency
+    # ---------------------------------------------------------
+
+    elif special == "transparent_15":
+        symbol.setOpacity(0.85)
+
+    # ---------------------------------------------------------
+    # Forward diagonal hatch
+    # ---------------------------------------------------------
+
+    elif (
+        special == "forward_hatch"
+        and geometry_type == QgsWkbTypes.PolygonGeometry
+    ):
+        fill_layer = QgsSimpleFillSymbolLayer()
+        fill_layer.setColor(
+            QColor(color)
+        )
+        fill_layer.setBrushStyle(
+            Qt.FDiagPattern
+        )
+
+        symbol.changeSymbolLayer(
+            0,
+            fill_layer,
+        )
+
+    # ---------------------------------------------------------
+    # Backward diagonal hatch
+    # ---------------------------------------------------------
+
+    elif (
+        special == "backward_hatch"
+        and geometry_type == QgsWkbTypes.PolygonGeometry
+    ):
+        fill_layer = QgsSimpleFillSymbolLayer()
+        fill_layer.setColor(
+            QColor(color)
+        )
+        fill_layer.setBrushStyle(
+            Qt.BDiagPattern
+        )
+
+        symbol.changeSymbolLayer(
+            0,
+            fill_layer,
+        )
+
+    layer.setRenderer(
+        QgsSingleSymbolRenderer(symbol)
+    )
+
 def add_country_outputs(
     map_data,
     country_layer_outputs,
     style_resolver=None,
+    svg_path=None,
 ):
     """
     Add locally clipped country constraint layers to the project.
@@ -464,41 +910,11 @@ def add_country_outputs(
 
         geometry_type = layer.geometryType()
 
-        if geometry_type == QgsWkbTypes.PolygonGeometry:
-            symbol = QgsFillSymbol.createSimple(
-                {
-                    "color": color,
-                    "outline_color": color,
-                    "outline_width": "0.25",
-                }
-            )
-            symbol.setOpacity(0.35)
-
-        elif geometry_type == QgsWkbTypes.LineGeometry:
-            symbol = QgsLineSymbol.createSimple(
-                {
-                    "color": color,
-                    "width": "0.35",
-                }
-            )
-
-        elif geometry_type == QgsWkbTypes.PointGeometry:
-            symbol = QgsMarkerSymbol.createSimple(
-                {
-                    "name": "circle",
-                    "color": color,
-                    "outline_color": color,
-                    "size": "2.0",
-                }
-            )
-
-        else:
-            print(
-                f"Country map output skipped: "
-                f"{layer_name} — unsupported geometry type."
-            )
-            layer_ids[layer_name] = None
-            continue
+        apply_country_layer_style(
+            layer=layer,
+            style=style,
+            svg_path=svg_path,
+        )
 
         layer.setRenderer(
             QgsSingleSymbolRenderer(symbol)

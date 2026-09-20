@@ -1,6 +1,7 @@
 import gc
 
 from scripts.reporting import create_site_summary
+from scripts.solar_resource import download_strang_data
 from qgis.core import (QgsApplication, 
     Qgis, 
     QgsProject
@@ -492,6 +493,16 @@ def main():
                 summary_settings=getattr(
                     country_config,
                     "SITE_SUMMARY",
+                    None,
+                ),
+            )
+
+            strang_files = download_strang_data(
+                site_layer_path=site_layer_path,
+                folder_path=site_data["folder_path"],
+                settings=getattr(
+                    country_config,
+                    "STRANG_SETTINGS",
                     None,
                 ),
             )

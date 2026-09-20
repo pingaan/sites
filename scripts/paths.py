@@ -116,4 +116,54 @@ def get_paths():
 
     paths["dem_index_crs"] = "EPSG:3006"
 
+    # ---------------------------------------------------------
+    # Global Solar Atlas rasters
+    # ---------------------------------------------------------
+
+    sgis_path = os.path.join(
+        paths["data_path"],
+        "sgis",
+    )
+
+    paths["sgis_path"] = sgis_path
+
+    paths["solargis_rasters"] = {
+        "dif": os.path.join(
+            sgis_path,
+            "DIF.tif",
+        ),
+        "dni": os.path.join(
+            sgis_path,
+            "DNI.tif",
+        ),
+        "ghi": os.path.join(
+            sgis_path,
+            "GHI.tif",
+        ),
+        "gti": os.path.join(
+            sgis_path,
+            "GTI.tif",
+        ),
+        "opta": os.path.join(
+            sgis_path,
+            "OPTA.tif",
+        ),
+        "pvout": os.path.join(
+            sgis_path,
+            "PVOUT.tif",
+        ),
+        "temperature": os.path.join(
+            sgis_path,
+            "TEMP.tif",
+        ),
+    }
+
+    paths["solargis_monthly_pvout"] = {
+        month: os.path.join(
+            sgis_path,
+            f"PVOUT_{month:02d}.tif",
+        )
+        for month in range(1, 13)
+    }
+
     return paths

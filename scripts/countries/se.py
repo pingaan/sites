@@ -1,3 +1,5 @@
+import os
+
 """
 Swedish dataset configuration.
 
@@ -486,4 +488,18 @@ for definition in LAYERS:
 SITE_SUMMARY = {
     "tariff_zone_field": "TARIFFZONE",
     "tariff_zone_prefix": "SE",
+}
+
+STRANG_SETTINGS = {
+    "base_url": (
+        "https://opendata-download-metanalys.smhi.se/"
+        "api/category/strang1g/version/1"
+    ),
+    "from_date": "2010-01-01",
+    "to_date": "2023-12-31",
+    "parameters": {
+        117: "Global Horizontal Irradiation",
+        118: "Direct Normal Irradiation",
+        122: "Diffuse Horizontal Irradiation",
+    },
 }

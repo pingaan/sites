@@ -1,27 +1,27 @@
 import os
+from urllib.parse import urlencode
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-from urllib.parse import urlencode
+
 from qgis.core import (
+    QgsCategorizedSymbolRenderer,
     QgsFillSymbol,
     QgsLineSymbol,
+    QgsMarkerLineSymbolLayer,
     QgsMarkerSymbol,
-    QgsSingleSymbolRenderer,
+    QgsProject,
+    QgsProperty,
+    QgsRasterLayer,
+    QgsRendererCategory,
     QgsSimpleFillSymbolLayer,
+    QgsSimpleLineSymbolLayer,
+    QgsSingleSymbolRenderer,
+    QgsSvgMarkerSymbolLayer,
+    QgsSymbol,
+    QgsSymbolLayer,
     QgsVectorLayer,
     QgsWkbTypes,
-    QgsSymbol,
-    QgsWkbTypes,
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsMarkerSymbol,
-    QgsProperty,
-    QgsSvgMarkerSymbolLayer,
-    QgsSymbolLayer
-    QgsLineSymbol,
-    QgsSimpleLineSymbolLayer,
-    QgsMarkerLineSymbolLayer
 )
 
 
@@ -862,13 +862,19 @@ def add_country_outputs(
 
         definition = layer_output["definition"]
         layer_name = definition["name"]
-        output_path = layer_output.get("output_path")
+        output_path = layer_output.get(
+            "output_path"
+        )
 
-        if not output_path or not os.path.isfile(output_path):
+        if (
+            not output_path
+            or not os.path.isfile(output_path)
+        ):
             print(
                 f"Country map output skipped: "
                 f"{layer_name} — no file."
             )
+
             layer_ids[layer_name] = None
             continue
 
@@ -889,6 +895,7 @@ def add_country_outputs(
                 f"Country map output skipped: "
                 f"{layer_name} — no features."
             )
+
             layer_ids[layer_name] = None
             continue
 
@@ -898,17 +905,10 @@ def add_country_outputs(
             else {}
         )
 
-        color = style.get(
-            "color",
-            "#d27800",
-        )
-
         visible = style.get(
             "visible",
             False,
         )
-
-        geometry_type = layer.geometryType()
 
         apply_country_layer_style(
             layer=layer,
@@ -916,22 +916,24 @@ def add_country_outputs(
             svg_path=svg_path,
         )
 
-        layer.setRenderer(
-            QgsSingleSymbolRenderer(symbol)
-        )
-
         project.addMapLayer(
             layer,
             False,
         )
 
-        node = constraints_group.addLayer(layer)
-        node.setItemVisibilityChecked(visible)
+        node = constraints_group.addLayer(
+            layer
+        )
+
+        node.setItemVisibilityChecked(
+            visible
+        )
 
         layer_ids[layer_name] = layer.id()
 
         print(
-            f"Country constraint added to map: {layer_name}"
+            f"Country constraint added to map: "
+            f"{layer_name}"
         )
 
     return layer_ids

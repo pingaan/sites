@@ -1,7 +1,11 @@
 import gc
 
 from scripts.reporting import create_site_summary
-from scripts.solar_resource import download_strang_data
+from scripts.solar_resource import (
+    apply_strang_fallback,
+    collect_solargis_resources,
+    get_site_centroid_wgs84,
+)
 from qgis.core import (QgsApplication, 
     Qgis, 
     QgsProject
@@ -83,7 +87,7 @@ from scripts.site_selection import (
 )
 
 
-estate = "kävlinge ålstorp 19:63"
+estate = "skellefteå degerträsk 1:39"
 
 custom_polygon = None
 
@@ -497,14 +501,25 @@ def main():
                 ),
             )
 
-            strang_files = download_strang_data(
+            # -------------------------------------------------
+            # Global Solar Atlas resource data
+            # -------------------------------------------------
+
+            site_centroid = get_site_centroid_wgs84(
                 site_layer_path=site_layer_path,
-                folder_path=site_data["folder_path"],
-                settings=getattr(
-                    country_config,
-                    "STRANG_SETTINGS",
-                    None,
-                ),
+            )
+
+            solar_resource_data = collect_solargis_resources(
+                raster_paths=paths["solargis_rasters"],
+                longitude=site_centroid["longitude"],
+                latitude=site_centroid["latitude"],
+            )
+
+            solar_resource_data = apply_strang_fallback(
+                solar_resource_data=solar_resource_data,
+                longitude=site_centroid["longitude"],
+                latitude=site_centroid["latitude"],
+                output_folder=site_data["folder_path"],
             )
 
             print(

@@ -4,11 +4,12 @@ import math
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
+    QgsField,
+    QgsProcessingException,
+    QgsUnitTypes,
     QgsVectorLayer,
     QgsWkbTypes,
     Qgis,
-    QgsUnitTypes,
-    QgsField
 )
 
 
@@ -107,14 +108,58 @@ def clip_country_layers(
             filename,
         )
 
-        processing.run(
-            "native:clip",
-            {
-                "INPUT": source,
-                "OVERLAY": overlay,
-                "OUTPUT": source_clip_path,
-            },
-        )
+        try:
+            processing.run(
+                "native:clip",
+                {
+                    "INPUT": source,
+                    "OVERLAY": overlay,
+                    "OUTPUT": source_clip_path,
+                },
+            )
+
+        except QgsProcessingException as error:
+
+            if "invalid geometry" not in str(error).lower():
+                raise
+
+            print(
+                f"Invalid geometry detected in {display_name}. "
+                "Repairing the source layer and retrying..."
+            )
+
+            repaired_source = processing.run(
+                "native:fixgeometries",
+                {
+                    "INPUT": source,
+                    "METHOD": 1,
+                    "OUTPUT": "TEMPORARY_OUTPUT",
+                },
+            )["OUTPUT"]
+
+            # Use a separate output because the failed clipping
+            # operation may have left a partial file behind.
+            clip_root, clip_extension = os.path.splitext(
+                source_clip_path
+            )
+
+            source_clip_path = (
+                f"{clip_root}_repaired{clip_extension}"
+            )
+
+            processing.run(
+                "native:clip",
+                {
+                    "INPUT": repaired_source,
+                    "OVERLAY": overlay,
+                    "OUTPUT": source_clip_path,
+                },
+            )
+
+            print(
+                f"Geometry repaired and clipping completed: "
+                f"{display_name}"
+            )
 
         # Reproject only the local clipped result,
         # rather than the entire national dataset.

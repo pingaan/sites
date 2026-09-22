@@ -1008,3 +1008,252 @@ def append_grid_proximity_summary(
     )
 
     return report_path
+
+def append_soil_depth_summary(
+    folder_path,
+    folder_name,
+    soil_depth_result,
+    settings=None,
+):
+    """
+    Append soil-depth ranges for each soil type to the
+    site's existing text report.
+    """
+
+    report_path = os.path.join(
+        folder_path,
+        f"prints ({folder_name}).txt",
+    )
+
+    lines = [
+        "",
+        "Soil depth by soil type",
+        "-----------------------",
+    ]
+
+    if settings is None:
+        settings = {}
+
+    metre_precision = settings.get(
+        "metre_precision",
+        0,
+    )
+
+    centimetre_precision = settings.get(
+        "centimetre_precision",
+        0,
+    )
+
+    if not soil_depth_result:
+        lines.append(
+            "Soil-depth analysis was not performed."
+        )
+
+    elif soil_depth_result.get("status") != "available":
+        lines.append(
+            soil_depth_result.get(
+                "message",
+                "No soil-depth information was available "
+                "for the analysis site.",
+            )
+        )
+
+    else:
+        results = soil_depth_result.get(
+            "results",
+            [],
+        )
+
+        if not results:
+            lines.append(
+                "No soil types with valid soil-depth data "
+                "were found."
+            )
+
+        for result in results:
+            soil_type = result.get(
+                "soil_type",
+                "Unknown soil type",
+            )
+
+            if result.get("status") != "available":
+                lines.append(
+                    f"{soil_type}: no valid soil-depth data"
+                )
+                continue
+
+            minimum_m = result["minimum_m"]
+            maximum_m = result["maximum_m"]
+            minimum_cm = result["minimum_cm"]
+            maximum_cm = result["maximum_cm"]
+
+            minimum_m_text = format(
+                minimum_m,
+                f".{metre_precision}f",
+            )
+
+            maximum_m_text = format(
+                maximum_m,
+                f".{metre_precision}f",
+            )
+
+            minimum_cm_text = format(
+                minimum_cm,
+                f".{centimetre_precision}f",
+            )
+
+            maximum_cm_text = format(
+                maximum_cm,
+                f".{centimetre_precision}f",
+            )
+
+            lines.append(
+                f"{soil_type}: "
+                f"{minimum_m_text}–{maximum_m_text} m "
+                f"({minimum_cm_text}–{maximum_cm_text} cm)"
+            )
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Source: SGU Jorddjupsmodell. Values represent "
+                    "estimated depth to bedrock."
+                ),
+            ]
+        )
+
+    with open(
+        report_path,
+        "a",
+        encoding="utf-8",
+    ) as report_file:
+        report_file.write(
+            "\n".join(lines) + "\n"
+        )
+
+    print(
+        f"Soil-depth summary appended: {report_path}"
+    )
+
+    return report_path
+
+def append_custom_estates_summary(
+    folder_path,
+    folder_name,
+    custom_estates_result,
+):
+    """
+    Append estates intersecting a custom analysis polygon
+    to the site's text report.
+    """
+
+    if custom_estates_result is None:
+        return None
+
+    report_path = os.path.join(
+        folder_path,
+        f"prints ({folder_name}).txt",
+    )
+
+    lines = [
+        "",
+        "Estates intersecting the custom analysis area",
+        "----------------------------------------------",
+    ]
+
+    status = custom_estates_result.get(
+        "status"
+    )
+
+    if status == "available":
+        estates = custom_estates_result.get(
+            "estates",
+            [],
+        )
+
+        if estates:
+            for estate in estates:
+                estate_name = estate[
+                    "estate_name"
+                ]
+
+                overlap_area_ha = estate[
+                    "overlap_area_ha"
+                ]
+
+                analysis_percentage = estate[
+                    "analysis_percentage"
+                ]
+
+                lines.extend(
+                    [
+                        estate_name,
+                        (
+                            f"Overlap: "
+                            f"{overlap_area_ha:.2f} ha "
+                            f"({analysis_percentage:.2f}% "
+                            f"of analysis area)"
+                        ),
+                        "",
+                    ]
+                )
+
+        else:
+            lines.extend(
+                [
+                    (
+                        "No named estate geometries intersect "
+                        "the custom analysis area."
+                    ),
+                    "",
+                ]
+            )
+
+        unmatched_area_ha = (
+            custom_estates_result.get(
+                "unmatched_area_ha",
+                0.0,
+            )
+        )
+
+        unmatched_percentage = (
+            custom_estates_result.get(
+                "unmatched_percentage",
+                0.0,
+            )
+        )
+
+        lines.append(
+            "Unregistered or unmatched area: "
+            f"{unmatched_area_ha:.2f} ha "
+            f"({unmatched_percentage:.2f}%)"
+        )
+
+    elif status == "error":
+        lines.append(
+            "Estate identification failed: "
+            f"{custom_estates_result.get('error', 'unknown error')}"
+        )
+
+    else:
+        lines.append(
+            "Estate identification is unavailable "
+            "for this analysis area."
+        )
+
+    with open(
+        report_path,
+        "a",
+        encoding="utf-8",
+    ) as report_file:
+        report_file.write(
+            "\n".join(lines) + "\n"
+        )
+
+    print(
+        f"Custom-estate summary appended: "
+        f"{report_path}"
+    )
+
+    return report_path

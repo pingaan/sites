@@ -1,5 +1,20 @@
 import gc
+import os
 
+from scripts.run_id import create_run_id
+from scripts.output_package import (
+    create_output_geopackage,
+    repoint_project_layers_to_geopackage,
+    create_analysis_manifest,
+    cleanup_analysis_outputs,
+    remove_cleanup_targets,
+)
+from scripts.custom_estates import (
+    analyse_custom_estates,
+)
+from scripts.soil_depth import (
+    analyse_soil_depth_by_type,
+)
 from scripts.redlisted_species import (
     download_redlisted_species,
 )
@@ -38,6 +53,8 @@ from scripts.reporting import (
     append_bos_summary,
     append_project_potential_summary,
     append_grid_proximity_summary,
+    append_soil_depth_summary,
+    append_custom_estates_summary
 )
 from scripts.solar_resource import (
     apply_strang_fallback,
@@ -136,6 +153,13 @@ custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
 def main():
 
     settings = UserSettings()
+
+    run_id = create_run_id()
+
+    print(
+        f"Analysis run ID: {run_id}"
+    )
+
     country_config = load_country_config(
         country_code=settings.country_code,
     )
@@ -144,6 +168,9 @@ def main():
     print("Starting solar site analysis...")
 
     qgs = initialize_qgis()
+
+    cleanup_targets = []
+    cleanup_folder_path = None
 
     try:
 
@@ -195,8 +222,11 @@ def main():
             site_data = extract_estate_features(
                 match=match,
                 row_indices=row_indices,
-                estates_layer_path=paths["estates_layer"],
+                estates_layer_path=paths[
+                    "estates_layer"
+                ],
                 output_root=paths["pot_path"],
+                run_id=run_id,
             )
 
             site_data["source_type"] = "estate"
@@ -205,8 +235,11 @@ def main():
         elif site_source["type"] == "custom_polygon":
 
             site_data = prepare_custom_polygon_source(
-                custom_polygon_path=site_source["polygon"],
+                custom_polygon_path=site_source[
+                    "polygon"
+                ],
                 output_root=paths["pot_path"],
+                run_id=run_id,
             )
 
             print(
@@ -255,6 +288,56 @@ def main():
             site_layer_path=site_layer_path,
             temp_path=site_data["temp_path"],
         )
+
+        custom_estates_result = None
+
+        if site_source["type"] == "custom_polygon":
+
+            if (
+                paths.get("estates_layer")
+                and paths.get("csv_file")
+            ):
+                try:
+                    custom_estates_result = (
+                        analyse_custom_estates(
+                            analysis_layer_path=(
+                                site_layer_path
+                            ),
+                            estates_layer_path=paths[
+                                "estates_layer"
+                            ],
+                            csv_file=paths[
+                                "csv_file"
+                            ],
+                        )
+                    )
+
+                except (
+                    ValueError,
+                    RuntimeError,
+                ) as error:
+                    print(
+                        "Custom-estate analysis failed, "
+                        "but processing will continue: "
+                        f"{error}"
+                    )
+
+                    custom_estates_result = {
+                        "status": "error",
+                        "estates": [],
+                        "error": str(error),
+                    }
+
+            else:
+                print(
+                    "Custom-estate analysis unavailable: "
+                    "no estate source is configured."
+                )
+
+                custom_estates_result = {
+                    "status": "unavailable",
+                    "estates": [],
+                }
 
         # -------------------------------------------------
         # Red-listed species observations
@@ -491,6 +574,18 @@ def main():
             folder_path=site_data["folder_path"],
         )
 
+        soil_depth_result = analyse_soil_depth_by_type(
+            analysis_layer_path=site_layer_path,
+            country_layer_outputs=country_layer_outputs,
+            data_path=paths["data_path"],
+            temp_path=site_data["temp_path"],
+            settings=getattr(
+                country_config,
+                "SOIL_DEPTH_SETTINGS",
+                None,
+            ),
+        )
+
         solar_remaining_path = subtract_solar_constraints(
             site_layer_path=site_layer_path,
             country_layer_outputs=country_layer_outputs,
@@ -625,6 +720,32 @@ def main():
             summary_settings=getattr(
                 country_config,
                 "SITE_SUMMARY",
+                None,
+            ),
+        )
+
+        if site_source["type"] == "custom_polygon":
+            custom_estates_report_path = (
+                append_custom_estates_summary(
+                    folder_path=site_data[
+                        "folder_path"
+                    ],
+                    folder_name=site_data[
+                        "folder_name"
+                    ],
+                    custom_estates_result=(
+                        custom_estates_result
+                    ),
+                )
+            )
+
+        soil_depth_report_path = append_soil_depth_summary(
+            folder_path=site_data["folder_path"],
+            folder_name=site_data["folder_name"],
+            soil_depth_result=soil_depth_result,
+            settings=getattr(
+                country_config,
+                "SOIL_DEPTH_SETTINGS",
                 None,
             ),
         )
@@ -899,6 +1020,7 @@ def main():
             bos_settings=bos_settings,
         )
 
+        soil_depth_result = None
         bos_landcover_result = None
         bos_wetland_result = None
         bos_override_results = None
@@ -996,21 +1118,154 @@ def main():
             bos_coverage_path=bos_coverage_path,
         )
 
+        # -------------------------------------------------
+        # Package permanent vector outputs
+        # -------------------------------------------------
+
+        final_layer_definitions = [
+            {
+                "key": "analysis_site",
+                "name": "Analysis site",
+                "path": site_layer_path,
+            },
+            {
+                "key": "solar_candidate",
+                "name": "Solar candidate area",
+                "path": solar_candidate_path,
+            },
+            {
+                "key": "wind_candidate",
+                "name": "Wind candidate area",
+                "path": wind_candidate_path,
+            },
+            {
+                "key": "neighbouring_estates",
+                "name": "Neighbouring estates",
+                "path": final_neighbours_path,
+            },
+            {
+                "key": "ineligible_terrain",
+                "name": "Ineligible terrain",
+                "path": filtered_ineligible_terrain_path,
+            },
+            {
+                "key": "contour_lines",
+                "name": "Contour lines",
+                "path": contour_lines_path,
+            },
+            {
+                "key": "bos_coverage",
+                "name": "BoS coverage",
+                "path": bos_coverage_path,
+            },
+        ]
+
+        # Add every configured country output.
+        for number, layer_output in enumerate(
+            country_layer_outputs,
+            start=1,
+        ):
+            definition = layer_output[
+                "definition"
+            ]
+
+            final_layer_definitions.append(
+                {
+                    "key": (
+                        f"country_{number:03d}"
+                    ),
+                    "name": definition["name"],
+                    "path": layer_output.get(
+                        "output_path"
+                    ),
+                }
+            )
+
+        # Add the downloaded red-listed observations when
+        # the service returned a valid output.
+        redlisted_output_path = None
+
+        if redlisted_species_result:
+            redlisted_output_path = (
+                redlisted_species_result.get(
+                    "output_path"
+                )
+            )
+
+        final_layer_definitions.append(
+            {
+                "key": "redlisted_species",
+                "name": (
+                    "Red-listed species observations"
+                ),
+                "path": redlisted_output_path,
+            }
+        )
+
+        output_package = create_output_geopackage(
+            layer_definitions=final_layer_definitions,
+            folder_path=site_data["folder_path"],
+            folder_name=site_data["folder_name"],
+        )
+
+        repointed_project_layers = (
+            repoint_project_layers_to_geopackage(
+                output_package=output_package,
+            )
+        )
+
         project_path = save_map_project(
             map_data=map_data,
             folder_path=site_data["folder_path"],
             folder_name=site_data["folder_name"],
         )
 
+        manifest_path = create_analysis_manifest(
+            folder_path=site_data["folder_path"],
+            folder_name=site_data["folder_name"],
+            run_id=run_id,
+            output_package=output_package,
+            project_path=project_path,
+            site_source=site_source,
+            settings=settings,
+            country_config=country_config,
+            working_crs=working_crs,
+        )
+
+        report_path = os.path.join(
+            site_data["folder_path"],
+            f"prints ({site_data['folder_name']}).txt",
+        )
+
+        cleanup_plan = cleanup_analysis_outputs(
+            folder_path=site_data["folder_path"],
+            project_path=project_path,
+            geopackage_path=output_package[
+                "gpkg_path"
+            ],
+            report_path=report_path,
+            manifest_path=manifest_path,
+            dry_run=True,
+        )
+
+        cleanup_targets = cleanup_plan[
+            "targets"
+        ]
+
+        cleanup_folder_path = site_data[
+            "folder_path"
+        ]
+
         print(
-            f"Estate features extracted to: "
-            f"{site_data['temp_path']}"
+            f"Final analysis package prepared: "
+            f"{site_data['folder_path']}"
         )
 
     finally:
         neighbour_groups = None
 
-        # Release references to layer-tree groups before clearing them.
+        # Release references to layer-tree groups before
+        # clearing them.
         map_data = None
 
         QgsProject.instance().clear()
@@ -1020,6 +1275,15 @@ def main():
         shutdown_qgis(qgs)
 
     print("QGIS shut down cleanly.")
+
+    if (
+        cleanup_targets
+        and cleanup_folder_path
+    ):
+        remove_cleanup_targets(
+            folder_path=cleanup_folder_path,
+            removal_targets=cleanup_targets,
+        )
 
 
 if __name__ == "__main__":

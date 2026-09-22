@@ -711,3 +711,25 @@ REDLISTED_SPECIES_SETTINGS = {
         "Red-listed species observations"
     ),
 }
+
+SOIL_DEPTH_SETTINGS = {
+    "raster_source": "soil_depth.tif",
+
+    # Name of the already processed country layer.
+    "soil_layer_name": "Jordtyper",
+
+    "soil_type_field": "TYPE",
+
+    "band": 1,
+
+    # SGU Jorddjupsmodell values are whole metres
+    # representing estimated depth to bedrock.
+    "source_unit": "m",
+
+    "metre_multiplier": 1.0,
+
+    "nodata_value": 0.0,
+
+    "metre_precision": 0,
+    "centimetre_precision": 0,
+}

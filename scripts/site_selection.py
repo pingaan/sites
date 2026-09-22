@@ -79,6 +79,7 @@ def extract_estate_features(
     row_indices,
     estates_layer_path,
     output_root,
+    run_id,
 ):
     """
     Extract the estate feature(s) corresponding to the
@@ -107,6 +108,7 @@ def extract_estate_features(
     folder_path = os.path.join(
         output_root,
         folder_name,
+        run_id,
     )
 
     os.makedirs(
@@ -447,6 +449,7 @@ def select_site_source(
 def prepare_custom_polygon_source(
     custom_polygon_path,
     output_root,
+    run_id,
 ):
     """
     Validate and prepare an explicitly supplied custom polygon
@@ -517,6 +520,7 @@ def prepare_custom_polygon_source(
     folder_path = os.path.join(
         output_root,
         folder_name,
+        run_id,
     )
 
     temp_path = os.path.join(

@@ -503,3 +503,184 @@ STRANG_SETTINGS = {
         122: "Diffuse Horizontal Irradiation",
     },
 }
+
+SNOW_DEPTH_MONTHS = {
+    "January": "jan",
+    "February": "feb",
+    "March": "mar",
+    "April": "apr",
+    "May": "may",
+    "June": "jun",
+    "July": "jul",
+    "August": "aug",
+    "September": "sep",
+    "October": "oct",
+    "November": "nov",
+    "December": "dec",
+}
+
+METEOROLOGY_SETTINGS = {
+    "wind_speed": {
+        "source": "wind_map.shp",
+        "value_field": "Z",
+        "measurement_height_m": 140,
+        "source_name": "Swedish wind map",
+    },
+
+    "wind_load_field": "WINDLOAD",
+    "snow_load_field": "SNOWLOAD",
+
+    "raster_data": {
+        "humidity": {
+            "source": "humidity_data.tif",
+            "name": "Average humidity",
+            "unit": "%",
+            "source_name": "Swedish meteorological raster",
+        },
+
+        "temperature_fallback": {
+            "source": "temp_data.tif",
+            "name": "Average air temperature",
+            "unit": "°C",
+            "source_name": "Swedish meteorological raster",
+        },
+
+        "air_pressure": {
+            "source": "air_pressure_data.tif",
+            "name": "Average air pressure",
+            "unit": "hPa",
+            "source_name": "Swedish meteorological raster",
+        },
+
+        "snow_depth": {
+            month_name: {
+                "source": f"snow_depth_{month_code}.tif",
+                "name": f"Average snow depth — {month_name}",
+                "unit": "m",
+                "source_name": "Swedish meteorological raster",
+                "precision": 3,
+                "secondary_unit": "cm",
+                "secondary_multiplier": 100,
+                "secondary_precision": 2,
+            }
+            for month_name, month_code
+            in SNOW_DEPTH_MONTHS.items()
+        },
+    },
+}
+
+POLITICAL_SETTINGS = {
+    "source": "parties.csv",
+    "site_municipality_field": "BOROUGH",
+    "csv_municipality_field": "Kommun",
+    "control_field": "Kommunal Politiskt styre",
+    "total_seats_field": "TOT",
+
+    "party_names": {
+        "M": "Moderaterna",
+        "SD": "Sverigedemokraterna",
+        "KD": "Kristdemokraterna",
+        "L": "Liberalerna",
+        "S": "Socialdemokraterna",
+        "C": "Centerpartiet",
+        "MP": "Miljöpartiet",
+        "V": "Vänsterpartiet",
+    },
+}
+
+BOS_SETTINGS = {
+    "landcover_raster": "landcover.tif",
+    "wet_soil_layer": "wet_soil.shp",
+    "rocky_terrain_layer": "rocky_terrain.shp",
+    "peat_quarry_layer": "peat_quarry.shp",
+
+    "class_groups": {
+        "Open field": [
+            3,
+            41,
+            42,
+            115,
+            117,
+        ],
+        "Forest": [
+            111,
+            112,
+            113,
+            114,
+            116,
+            118,
+            121,
+            122,
+            123,
+            124,
+            126,
+            128,
+        ],
+        "Wetland": [
+            2,
+            125,
+            127,
+        ],
+        "Rocky terrain": [
+            200,
+        ],
+        "Peat quarry": [
+            201,
+        ],
+    },
+
+    "rocky_terrain_value": 200,
+    "peat_quarry_value": 201,
+}
+
+GRID_PROXIMITY_SETTINGS = {
+    # Anna treated anything closer than 70 metres as
+    # crossing the project area.
+    "crossing_distance_m": 70.0,
+
+    "layers": [
+        {
+            "name": "300–500 kV ledning",
+            "type": "power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "Nedgrävd ledning",
+            "type": "underground_power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "170–220 kV ledning",
+            "type": "power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "80–170 kV ledning",
+            "type": "power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "10–80 kV ledning",
+            "type": "power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "Okänd ledning",
+            "type": "power_line",
+            "voltage_field": "max_voltag",
+            "voltage_divisor": 1000.0,
+        },
+        {
+            "name": "Transformatorstation",
+            "type": "transformer_station",
+            "primary_voltage_field": "v_primary",
+            "secondary_voltage_field": "v_secondar",
+            "voltage_divisor": 1000.0,
+        },
+    ],
+}

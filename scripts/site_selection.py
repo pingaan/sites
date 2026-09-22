@@ -1,5 +1,6 @@
 import os
 import processing
+import re
 
 import pandas as pd
 
@@ -8,6 +9,7 @@ from qgis.core import (
     QgsUnitTypes,
     QgsVectorLayer,
     QgsVectorFileWriter,
+    QgsWkbTypes
 )
 
 
@@ -441,3 +443,134 @@ def select_site_source(
     raise ValueError(
         "No estate or custom polygon supplied."
     )
+
+def prepare_custom_polygon_source(
+    custom_polygon_path,
+    output_root,
+):
+    """
+    Validate and prepare an explicitly supplied custom polygon
+    so it provides the same initial data structure as an estate
+    extracted from the national estate dataset.
+
+    The later merge, dissolve, singlepart, CRS and analysis
+    stages can therefore be shared by both input types.
+    """
+
+    if not custom_polygon_path:
+        raise ValueError(
+            "No custom polygon path was supplied."
+        )
+
+    if not os.path.isfile(custom_polygon_path):
+        raise FileNotFoundError(
+            f"Custom polygon does not exist: "
+            f"{custom_polygon_path}"
+        )
+
+    source_layer = QgsVectorLayer(
+        custom_polygon_path,
+        "Custom analysis polygon",
+        "ogr",
+    )
+
+    if not source_layer.isValid():
+        raise ValueError(
+            f"Failed to load custom polygon: "
+            f"{custom_polygon_path}"
+        )
+
+    if (
+        source_layer.geometryType()
+        != QgsWkbTypes.PolygonGeometry
+    ):
+        raise ValueError(
+            "The custom analysis input must contain "
+            "polygon geometry."
+        )
+
+    if source_layer.featureCount() == 0:
+        raise ValueError(
+            "The custom polygon layer contains no features."
+        )
+
+    if not source_layer.crs().isValid():
+        raise ValueError(
+            "The custom polygon has no valid CRS."
+        )
+
+    source_name = os.path.splitext(
+        os.path.basename(custom_polygon_path)
+    )[0]
+
+    safe_name = re.sub(
+        r'[<>:"/\\|?*]+',
+        "_",
+        source_name,
+    ).strip(" ._")
+
+    if not safe_name:
+        safe_name = "custom_polygon"
+
+    folder_name = f"CUSTOM {safe_name}"
+
+    folder_path = os.path.join(
+        output_root,
+        folder_name,
+    )
+
+    temp_path = os.path.join(
+        folder_path,
+        "temp",
+    )
+
+    os.makedirs(
+        temp_path,
+        exist_ok=True,
+    )
+
+    prepared_polygon_path = os.path.join(
+        temp_path,
+        "custom_polygon_source.shp",
+    )
+
+    processing.run(
+        "native:fixgeometries",
+        {
+            "INPUT": source_layer,
+            "OUTPUT": prepared_polygon_path,
+        },
+    )
+
+    prepared_layer = QgsVectorLayer(
+        prepared_polygon_path,
+        "Prepared custom polygon",
+        "ogr",
+    )
+
+    if not prepared_layer.isValid():
+        raise RuntimeError(
+            "Failed to prepare the custom polygon."
+        )
+
+    if prepared_layer.featureCount() == 0:
+        raise RuntimeError(
+            "No polygon geometry remained after repairing "
+            "the custom input."
+        )
+
+    print(
+        f"Custom polygon source prepared: "
+        f"{prepared_polygon_path}"
+    )
+
+    return {
+        "folder_name": folder_name,
+        "folder_path": folder_path,
+        "temp_path": temp_path,
+        "extracted_layers": [
+            prepared_polygon_path,
+        ],
+        "source_type": "custom_polygon",
+        "source_path": custom_polygon_path,
+    }

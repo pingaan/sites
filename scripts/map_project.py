@@ -937,3 +937,138 @@ def add_country_outputs(
         )
 
     return layer_ids
+
+def add_bos_coverage(
+    map_data,
+    bos_coverage_path,
+):
+    """
+    Add the final classified BoS coverage layer to the
+    QGIS project.
+    """
+
+    if (
+        bos_coverage_path is None
+        or not os.path.isfile(bos_coverage_path)
+    ):
+        print(
+            "BoS map output skipped: no coverage file."
+        )
+        return None
+
+    project = map_data["project"]
+
+    layer = QgsVectorLayer(
+        bos_coverage_path,
+        "BoS land-cover coverage",
+        "ogr",
+    )
+
+    if not layer.isValid():
+        raise ValueError(
+            f"Failed to load BoS coverage layer: "
+            f"{bos_coverage_path}"
+        )
+
+    if layer.featureCount() == 0:
+        print(
+            "BoS map output skipped: coverage layer is empty."
+        )
+        return None
+
+    if layer.fields().indexOf("BOS_GROUP") == -1:
+        raise ValueError(
+            "BoS coverage layer has no BOS_GROUP field."
+        )
+
+    category_styles = {
+        "Open field": {
+            "color": "#e5d76f",
+            "outline": "#9c8d32",
+        },
+        "Peat quarry": {
+            "color": "#795548",
+            "outline": "#4e342e",
+        },
+        "Forest": {
+            "color": "#4f8a4c",
+            "outline": "#285a2b",
+        },
+        "Wetland": {
+            "color": "#55a6cf",
+            "outline": "#276987",
+        },
+        "Rocky terrain": {
+            "color": "#9e9e9e",
+            "outline": "#616161",
+        },
+        "Other land cover": {
+            "color": "#c8a6d8",
+            "outline": "#79558a",
+        },
+        "No land-cover data": {
+            "color": "#eeeeee",
+            "outline": "#777777",
+        },
+    }
+
+    categories = []
+
+    for group_name, style in category_styles.items():
+
+        symbol = QgsFillSymbol.createSimple(
+            {
+                "color": style["color"],
+                "outline_color": style["outline"],
+                "outline_width": "0.30",
+            }
+        )
+
+        if group_name == "No land-cover data":
+            symbol.setOpacity(0.30)
+
+        else:
+            symbol.setOpacity(0.65)
+
+        category = QgsRendererCategory(
+            group_name,
+            symbol,
+            group_name,
+        )
+
+        categories.append(category)
+
+    renderer = QgsCategorizedSymbolRenderer(
+        "BOS_GROUP",
+        categories,
+    )
+
+    layer.setRenderer(renderer)
+
+    project.addMapLayer(
+        layer,
+        False,
+    )
+
+    root = project.layerTreeRoot()
+
+    bos_group = root.findGroup(
+        "BoS analysis"
+    )
+
+    if bos_group is None:
+        bos_group = root.addGroup(
+            "BoS analysis"
+        )
+
+    node = bos_group.addLayer(layer)
+
+    # Leave BoS visible when the project is first opened.
+    node.setItemVisibilityChecked(True)
+
+    print(
+        f"BoS coverage added to map: "
+        f"{layer.featureCount()} categories."
+    )
+
+    return layer.id()

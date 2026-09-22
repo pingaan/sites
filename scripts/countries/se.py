@@ -684,3 +684,30 @@ GRID_PROXIMITY_SETTINGS = {
         },
     ],
 }
+
+REDLISTED_SPECIES_SETTINGS = {
+    "service_url": (
+        "https://sosgeo.artdata.slu.se/"
+        "geoserver/SOS/ows"
+    ),
+
+    "wfs_version": "2.0.0",
+
+    "type_name": (
+        "SOS:SpeciesObservationsRedlisted"
+    ),
+
+    "source_crs": "EPSG:4326",
+
+    "context_distance_m": 1000.0,
+
+    "page_size": 5000,
+
+    "output_filename": (
+        "redlisted_species.shp"
+    ),
+
+    "map_layer_name": (
+        "Red-listed species observations"
+    ),
+}

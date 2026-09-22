@@ -1,5 +1,8 @@
 import gc
 
+from scripts.redlisted_species import (
+    download_redlisted_species,
+)
 from scripts.grid_proximity import (
     analyse_grid_proximity,
 )
@@ -55,6 +58,7 @@ from scripts.map_project import (
     add_country_outputs,
     save_map_project,
     add_bos_coverage,
+    add_redlisted_species,
 )
 from scripts.constraints import (
     clip_country_layers,
@@ -251,6 +255,64 @@ def main():
             site_layer_path=site_layer_path,
             temp_path=site_data["temp_path"],
         )
+
+        # -------------------------------------------------
+        # Red-listed species observations
+        # -------------------------------------------------
+
+        redlisted_species_settings = getattr(
+            country_config,
+            "REDLISTED_SPECIES_SETTINGS",
+            None,
+        )
+
+        redlisted_species_result = None
+
+        if redlisted_species_settings:
+
+            try:
+                redlisted_species_result = (
+                    download_redlisted_species(
+                        context_polygon_path=(
+                            site_layer_path
+                        ),
+                        folder_path=site_data[
+                            "folder_path"
+                        ],
+                        temp_path=site_data[
+                            "temp_path"
+                        ],
+                        settings=(
+                            redlisted_species_settings
+                        ),
+                    )
+                )
+
+            except RuntimeError as error:
+                print(
+                    "Red-listed species download failed, "
+                    "but the analysis will continue: "
+                    f"{error}"
+                )
+
+                redlisted_species_result = {
+                    "status": "error",
+                    "output_path": None,
+                    "feature_count": 0,
+                    "error": str(error),
+                }
+
+        else:
+            print(
+                "Red-listed species download skipped: "
+                "not configured for this country."
+            )
+
+            redlisted_species_result = {
+                "status": "unavailable",
+                "output_path": None,
+                "feature_count": 0,
+            }
 
         neighbouring_estates_path = extract_neighbouring_estates(
             estates_layer_path=paths["estates_layer"],
@@ -545,6 +607,15 @@ def main():
             neighbouring_estates_path=final_neighbours_path,
             ineligible_terrain_path=filtered_ineligible_terrain_path,
             contour_lines_path=contour_lines_path,
+        )
+
+        redlisted_species_layer_id = (
+            add_redlisted_species(
+                map_data=map_data,
+                redlisted_species_result=(
+                    redlisted_species_result
+                ),
+            )
         )
 
         site_summary = create_site_summary(

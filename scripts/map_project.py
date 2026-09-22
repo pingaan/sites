@@ -1072,3 +1072,160 @@ def add_bos_coverage(
     )
 
     return layer.id()
+
+def add_redlisted_species(
+    map_data,
+    redlisted_species_result,
+):
+    """
+    Add offline red-listed species observations to the QGIS
+    project and categorize them by red-list status.
+    """
+
+    if (
+        not redlisted_species_result
+        or redlisted_species_result.get("status")
+        != "available"
+    ):
+        print(
+            "Red-listed species map layer skipped: "
+            "no offline observations available."
+        )
+        return None
+
+    output_path = redlisted_species_result.get(
+        "output_path"
+    )
+
+    if (
+        not output_path
+        or not os.path.isfile(output_path)
+    ):
+        print(
+            "Red-listed species map layer skipped: "
+            "output file is missing."
+        )
+        return None
+
+    layer = QgsVectorLayer(
+        output_path,
+        "Red-listed species observations",
+        "ogr",
+    )
+
+    if not layer.isValid():
+        raise ValueError(
+            f"Failed to load red-listed species layer: "
+            f"{output_path}"
+        )
+
+    if layer.featureCount() == 0:
+        print(
+            "Red-listed species map layer skipped: "
+            "the layer is empty."
+        )
+        return None
+
+    if layer.fields().indexOf("REDLIST") == -1:
+        raise ValueError(
+            "The red-listed species layer has no "
+            "REDLIST field."
+        )
+
+    category_styles = {
+        "CR": {
+            "label": "Critically Endangered (CR)",
+            "color": "#7f0000",
+            "size": "3.5",
+        },
+        "EN": {
+            "label": "Endangered (EN)",
+            "color": "#d7301f",
+            "size": "3.2",
+        },
+        "VU": {
+            "label": "Vulnerable (VU)",
+            "color": "#fc8d59",
+            "size": "3.0",
+        },
+        "NT": {
+            "label": "Near Threatened (NT)",
+            "color": "#fdbb30",
+            "size": "2.8",
+        },
+    }
+
+    categories = []
+
+    for category_value, style in (
+        category_styles.items()
+    ):
+
+        symbol = QgsMarkerSymbol.createSimple(
+            {
+                "name": "circle",
+                "color": style["color"],
+                "outline_color": "#202020",
+                "outline_width": "0.25",
+                "size": style["size"],
+            }
+        )
+
+        categories.append(
+            QgsRendererCategory(
+                category_value,
+                symbol,
+                style["label"],
+            )
+        )
+
+    renderer = QgsCategorizedSymbolRenderer(
+        "REDLIST",
+        categories,
+    )
+
+    layer.setRenderer(renderer)
+
+    # Show the complete species name in identify results,
+    # layer previews and map tips.
+    layer.setDisplayExpression(
+        """
+        CASE
+            WHEN "SPECIES" IS NOT NULL
+                 AND "SPECIES" != ''
+            THEN "SPECIES"
+            WHEN "SCI_NAME" IS NOT NULL
+                 AND "SCI_NAME" != ''
+            THEN "SCI_NAME"
+            ELSE 'Unknown species'
+        END
+        """
+    )
+
+    project = map_data["project"]
+
+    project.addMapLayer(
+        layer,
+        False,
+    )
+
+    root = project.layerTreeRoot()
+
+    species_group = root.findGroup(
+        "Species observations"
+    )
+
+    if species_group is None:
+        species_group = root.addGroup(
+            "Species observations"
+        )
+
+    node = species_group.addLayer(layer)
+    node.setItemVisibilityChecked(True)
+
+    print(
+        f"Red-listed species added to map: "
+        f"{layer.featureCount()} observations."
+    )
+
+    return layer.id()

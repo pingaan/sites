@@ -450,6 +450,7 @@ def prepare_custom_polygon_source(
     custom_polygon_path,
     output_root,
     run_id,
+    folder_name_override=None,
 ):
     """
     Validate and prepare an explicitly supplied custom polygon
@@ -506,16 +507,33 @@ def prepare_custom_polygon_source(
         os.path.basename(custom_polygon_path)
     )[0]
 
-    safe_name = re.sub(
+    if folder_name_override:
+        requested_folder_name = (
+            folder_name_override
+        )
+
+    else:
+        requested_folder_name = (
+            f"CUSTOM {source_name}"
+        )
+
+    # Use a hyphen for cadastral designations such as
+    # 19:63 because colons are invalid in Windows folders.
+    requested_folder_name = (
+        requested_folder_name.replace(
+            ":",
+            "-",
+        )
+    )
+
+    folder_name = re.sub(
         r'[<>:"/\\|?*]+',
         "_",
-        source_name,
+        requested_folder_name,
     ).strip(" ._")
 
-    if not safe_name:
-        safe_name = "custom_polygon"
-
-    folder_name = f"CUSTOM {safe_name}"
+    if not folder_name:
+        folder_name = "CUSTOM custom_polygon"
 
     folder_path = os.path.join(
         output_root,

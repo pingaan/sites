@@ -2,6 +2,7 @@ import pandas as pd
 
 from qgis.core import (
     QgsCoordinateTransform,
+    QgsDistanceArea,
     QgsFeatureRequest,
     QgsGeometry,
     QgsProject,
@@ -135,12 +136,6 @@ def analyse_custom_estates(
             "The custom analysis layer has no valid CRS."
         )
 
-    if site.crs().isGeographic():
-        raise ValueError(
-            "Custom-estate overlap calculations require "
-            "a projected working CRS."
-        )
-
     estates = QgsVectorLayer(
         estates_layer_path,
         "National estates",
@@ -162,18 +157,34 @@ def analyse_custom_estates(
         site
     )
 
+    transform_context = (
+        QgsProject.instance().transformContext()
+    )
+
+    area_calculator = QgsDistanceArea()
+
+    area_calculator.setSourceCrs(
+        site.crs(),
+        transform_context,
+    )
+
+    area_calculator.setEllipsoid(
+        "WGS84"
+    )
+
+    def measure_area(geometry):
+        return area_calculator.measureArea(
+            geometry
+        )
+
     site_area_square_metres = (
-        site_geometry.area()
+        measure_area(site_geometry)
     )
 
     if site_area_square_metres <= 0:
         raise ValueError(
             "The custom analysis area has no measurable area."
         )
-
-    transform_context = (
-        QgsProject.instance().transformContext()
-    )
 
     site_to_estates = QgsCoordinateTransform(
         site.crs(),
@@ -230,7 +241,7 @@ def analyse_custom_estates(
 
         if (
             intersection.isEmpty()
-            or intersection.area() <= 0
+            or measure_area(intersection) <= 0
         ):
             continue
 
@@ -278,7 +289,9 @@ def analyse_custom_estates(
             )
 
         overlap_square_metres = (
-            combined_intersection.area()
+            measure_area(
+                combined_intersection
+            )
         )
 
         if overlap_square_metres <= 0:
@@ -311,7 +324,9 @@ def analyse_custom_estates(
         )
 
         matched_area_square_metres = min(
-            matched_geometry.area(),
+            measure_area(
+                matched_geometry
+            ),
             site_area_square_metres,
         )
 

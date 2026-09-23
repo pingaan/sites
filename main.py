@@ -193,6 +193,8 @@ def main():
             custom_polygon,
         )
 
+        custom_estates_result = None
+
         if site_source["type"] == "estate":
 
             match = parse_estate(
@@ -234,12 +236,81 @@ def main():
 
         elif site_source["type"] == "custom_polygon":
 
+            custom_folder_name = None
+
+            try:
+                custom_estates_result = (
+                    analyse_custom_estates(
+                        analysis_layer_path=site_source[
+                            "polygon"
+                        ],
+                        estates_layer_path=paths[
+                            "estates_layer"
+                        ],
+                        csv_file=paths[
+                            "csv_file"
+                        ],
+                    )
+                )
+
+                intersecting_estates = (
+                    custom_estates_result.get(
+                        "estates",
+                        [],
+                    )
+                )
+
+                if intersecting_estates:
+                    dominant_estate = max(
+                        intersecting_estates,
+                        key=lambda estate: estate[
+                            "overlap_area_ha"
+                        ],
+                    )
+
+                    dominant_estate_name = (
+                        dominant_estate[
+                            "estate_name"
+                        ]
+                    )
+
+                    custom_folder_name = (
+                        f"CUSTOM "
+                        f"{dominant_estate_name}"
+                    )
+
+                    print(
+                        "Custom analysis parent selected "
+                        "from largest estate overlap: "
+                        f"{dominant_estate_name} "
+                        f"({dominant_estate['overlap_area_ha']:.2f} ha)"
+                    )
+
+            except (
+                ValueError,
+                RuntimeError,
+            ) as error:
+                print(
+                    "Custom-estate identification failed; "
+                    "using the polygon filename instead: "
+                    f"{error}"
+                )
+
+                custom_estates_result = {
+                    "status": "error",
+                    "estates": [],
+                    "error": str(error),
+                }
+
             site_data = prepare_custom_polygon_source(
                 custom_polygon_path=site_source[
                     "polygon"
                 ],
                 output_root=paths["pot_path"],
                 run_id=run_id,
+                folder_name_override=(
+                    custom_folder_name
+                ),
             )
 
             print(
@@ -288,56 +359,6 @@ def main():
             site_layer_path=site_layer_path,
             temp_path=site_data["temp_path"],
         )
-
-        custom_estates_result = None
-
-        if site_source["type"] == "custom_polygon":
-
-            if (
-                paths.get("estates_layer")
-                and paths.get("csv_file")
-            ):
-                try:
-                    custom_estates_result = (
-                        analyse_custom_estates(
-                            analysis_layer_path=(
-                                site_layer_path
-                            ),
-                            estates_layer_path=paths[
-                                "estates_layer"
-                            ],
-                            csv_file=paths[
-                                "csv_file"
-                            ],
-                        )
-                    )
-
-                except (
-                    ValueError,
-                    RuntimeError,
-                ) as error:
-                    print(
-                        "Custom-estate analysis failed, "
-                        "but processing will continue: "
-                        f"{error}"
-                    )
-
-                    custom_estates_result = {
-                        "status": "error",
-                        "estates": [],
-                        "error": str(error),
-                    }
-
-            else:
-                print(
-                    "Custom-estate analysis unavailable: "
-                    "no estate source is configured."
-                )
-
-                custom_estates_result = {
-                    "status": "unavailable",
-                    "estates": [],
-                }
 
         # -------------------------------------------------
         # Red-listed species observations

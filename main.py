@@ -1,6 +1,10 @@
 import gc
 import os
 
+from scripts.postgis_backend import (
+    extract_estate_from_postgis,
+)
+
 from scripts.run_id import create_run_id
 from scripts.output_package import (
     create_output_geopackage,
@@ -134,8 +138,6 @@ from scripts.site_context import (
 from scripts.site_selection import (
     select_site_source,
     parse_estate,
-    sequential_search,
-    extract_estate_features,
     merge_estate_features,
     dissolve_estate_features,
     split_estate_to_singleparts,
@@ -145,10 +147,9 @@ from scripts.site_selection import (
 )
 
 
-estate = ""
-
-#custom_polygon = None
-custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
+estate = "BORGHOLM ÖSTRA GREDA 5:1"
+custom_polygon = None
+#custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
 
 def main():
 
@@ -205,30 +206,11 @@ def main():
                 f"Searching for estate: {match}"
             )
 
-            row_indices = sequential_search(
-                paths["csv_file"],
-                match,
-            )
-
-            if row_indices is None:
-                raise ValueError(
-                    f"No estate found for: "
-                    f"{site_source['estate']}"
-                )
-
-            print(
-                f"Estate located at indices: "
-                f"{row_indices}"
-            )
-
-            site_data = extract_estate_features(
+            site_data = extract_estate_from_postgis(
                 match=match,
-                row_indices=row_indices,
-                estates_layer_path=paths[
-                    "estates_layer"
-                ],
                 output_root=paths["pot_path"],
                 run_id=run_id,
+                schema="se",
             )
 
             site_data["source_type"] = "estate"

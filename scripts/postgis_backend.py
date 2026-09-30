@@ -1,4 +1,5 @@
 import os
+import re
 
 from qgis.core import (
     QgsDataSourceUri,
@@ -7,23 +8,75 @@ from qgis.core import (
 )
 
 
-def _sql_text(value):
+_IDENTIFIER_PATTERN = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*$"
+)
+
+
+def _validate_identifier(value):
+    if not _IDENTIFIER_PATTERN.fullmatch(value):
+        raise ValueError(
+            f"Invalid database identifier: {value!r}"
+        )
+
+    return value
+
+
+def _quote_text(value):
+    return (
+        "'"
+        + str(value).replace("'", "''")
+        + "'"
+    )
+
+
+def _build_subset(filter_groups):
     """
-    Safely quote a text value for a PostgreSQL subset expression.
+    Construct alternatives joined with OR, where the fields
+    within each alternative are joined with AND.
     """
 
-    return "'" + str(value).replace("'", "''") + "'"
+    alternatives = []
+
+    for filter_group in filter_groups:
+        conditions = []
+
+        for field_name, field_value in (
+            filter_group.items()
+        ):
+            field_name = _validate_identifier(
+                field_name
+            )
+
+            conditions.append(
+                f'"{field_name}" = '
+                f"{_quote_text(field_value)}"
+            )
+
+        if conditions:
+            alternatives.append(
+                "("
+                + " AND ".join(conditions)
+                + ")"
+            )
+
+    if not alternatives:
+        raise ValueError(
+            "No estate lookup filters were supplied."
+        )
+
+    return " OR ".join(alternatives)
 
 
 def extract_estate_from_postgis(
-    match,
+    estate_config,
+    estate_reference,
     output_root,
     run_id,
-    schema="se",
 ):
     """
-    Find an estate through PostGIS and download its matching
-    feature parts to the local analysis workspace.
+    Download one estate from the country-specific PostGIS
+    estate table into the local analysis workspace.
     """
 
     password = os.environ.get(
@@ -34,6 +87,26 @@ def extract_estate_from_postgis(
         raise RuntimeError(
             "SITES_DB_PASSWORD has not been set."
         )
+
+    schema = _validate_identifier(
+        estate_config["schema"]
+    )
+
+    table = _validate_identifier(
+        estate_config["table"]
+    )
+
+    geometry_column = _validate_identifier(
+        estate_config["geometry_column"]
+    )
+
+    key_column = _validate_identifier(
+        estate_config["key_column"]
+    )
+
+    subset = _build_subset(
+        estate_reference["filter_groups"]
+    )
 
     uri = QgsDataSourceUri()
 
@@ -57,20 +130,12 @@ def extract_estate_from_postgis(
         password,
     )
 
-    borough, sector, segment = match
-
-    subset = (
-        f'"borough" = {_sql_text(borough)} '
-        f'AND "sector" = {_sql_text(sector)} '
-        f'AND "segment" = {_sql_text(segment)}'
-    )
-
     uri.setDataSource(
         schema,
-        "estates",
-        "geom",
+        table,
+        geometry_column,
         subset,
-        "id",
+        key_column,
     )
 
     estate_layer = QgsVectorLayer(
@@ -81,8 +146,8 @@ def extract_estate_from_postgis(
 
     if not estate_layer.isValid():
         raise RuntimeError(
-            "Failed to connect to the PostGIS "
-            "estate table."
+            "Failed to load the PostGIS table "
+            f"{schema}.{table}."
         )
 
     feature_count = estate_layer.featureCount()
@@ -90,7 +155,7 @@ def extract_estate_from_postgis(
     if feature_count == 0:
         raise ValueError(
             "No estate was found for "
-            f"{' '.join(match)}."
+            f"{estate_reference['display_name']}."
         )
 
     print(
@@ -98,14 +163,9 @@ def extract_estate_from_postgis(
         "estate feature part(s)."
     )
 
-    folder_name = (
-        " ".join(match)
-        .replace(":", "-")
-    )
-
     folder_path = os.path.join(
         output_root,
-        folder_name,
+        estate_reference["folder_name"],
         run_id,
     )
 
@@ -139,9 +199,8 @@ def extract_estate_from_postgis(
         != QgsVectorFileWriter.NoError
     ):
         raise RuntimeError(
-            "Failed to save the selected estate "
-            f"locally. Writer error: "
-            f"{writer_result[0]}"
+            "Failed to save the estate locally. "
+            f"Writer error: {writer_result[0]}"
         )
 
     print(
@@ -150,10 +209,15 @@ def extract_estate_from_postgis(
     )
 
     return {
-        "folder_name": folder_name,
+        "folder_name": estate_reference[
+            "folder_name"
+        ],
         "folder_path": folder_path,
         "temp_path": temp_path,
         "extracted_layers": [
             extracted_path
+        ],
+        "estate_reference": estate_reference[
+            "display_name"
         ],
     }

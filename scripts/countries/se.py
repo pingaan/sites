@@ -16,6 +16,72 @@ It does not, by itself, determine whether a layer is an exclusion.
 COUNTRY_CODE = "SE"
 COUNTRY_NAME = "Sweden"
 
+ESTATE_CONFIG = {
+    "schema": "se",
+    "table": "estates",
+    "geometry_column": "geom",
+    "key_column": "id",
+    "srid": 3006,
+    "group_fields": (
+        "borough",
+        "sector",
+        "segment",
+    ),
+}
+
+
+def parse_estate_reference(value):
+    """
+    Interpret a complete Swedish property designation.
+
+    The final word is the segment. Every possible division of
+    the preceding words between borough and sector is returned.
+    PostgreSQL then determines which combination actually exists.
+    """
+
+    tokens = value.strip().upper().split()
+
+    if len(tokens) < 3:
+        raise ValueError(
+            "A Swedish estate must contain a borough, "
+            "sector and segment."
+        )
+
+    segment = tokens[-1]
+    name_tokens = tokens[:-1]
+
+    filter_groups = []
+
+    for split_position in range(
+        1,
+        len(name_tokens),
+    ):
+        borough = " ".join(
+            name_tokens[:split_position]
+        )
+
+        sector = " ".join(
+            name_tokens[split_position:]
+        )
+
+        filter_groups.append(
+            {
+                "borough": borough,
+                "sector": sector,
+                "segment": segment,
+            }
+        )
+
+    display_name = " ".join(tokens)
+
+    return {
+        "display_name": display_name,
+        "folder_name": display_name.replace(
+            ":",
+            "-",
+        ),
+        "filter_groups": filter_groups,
+    }
 
 def _layer(
     source,

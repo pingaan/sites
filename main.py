@@ -1,6 +1,9 @@
 import gc
 import os
 
+from scripts.postgis_spatial import (
+    extract_intersecting_features,
+)
 from scripts.postgis_backend import (
     extract_estate_from_postgis,
 )
@@ -125,7 +128,6 @@ from scripts.paths import get_paths
 from scripts.crs import resolve_working_crs
 from scripts.site_context import (
     create_site_buffers,
-    extract_neighbouring_estates,
     group_neighbouring_estates,
     dissolve_neighbouring_groups,
     split_neighbouring_groups,
@@ -137,7 +139,6 @@ from scripts.site_context import (
 )
 from scripts.site_selection import (
     select_site_source,
-    parse_estate,
     merge_estate_features,
     dissolve_estate_features,
     split_estate_to_singleparts,
@@ -147,7 +148,7 @@ from scripts.site_selection import (
 )
 
 
-estate = "BORGHOLM ÖSTRA GREDA 5:1"
+estate = "kävlinge ålstorp 19:63"
 custom_polygon = None
 #custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
 
@@ -198,23 +199,27 @@ def main():
 
         if site_source["type"] == "estate":
 
-            match = parse_estate(
-                site_source["estate"]
+            estate_reference = (
+                country_config.parse_estate_reference(
+                    site_source["estate"]
+                )
             )
 
             print(
-                f"Searching for estate: {match}"
+                "Searching for estate: "
+                f"{estate_reference['display_name']}"
             )
 
             site_data = extract_estate_from_postgis(
-                match=match,
+                estate_config=(
+                    country_config.ESTATE_CONFIG
+                ),
+                estate_reference=estate_reference,
                 output_root=paths["pot_path"],
                 run_id=run_id,
-                schema="se",
             )
 
             site_data["source_type"] = "estate"
-            site_data["match"] = match
 
         elif site_source["type"] == "custom_polygon":
 
@@ -400,14 +405,30 @@ def main():
                 "feature_count": 0,
             }
 
-        neighbouring_estates_path = extract_neighbouring_estates(
-            estates_layer_path=paths["estates_layer"],
-            hundred_m_buffer_path=buffer_paths["100m"],
-            folder_path=site_data["folder_path"],
+        neighbouring_estates_path = (
+            extract_intersecting_features(
+                dataset_config=(
+                    country_config.ESTATE_CONFIG
+                ),
+                intersection_layer_path=(
+                    buffer_paths["100m"]
+                ),
+                output_path=os.path.join(
+                    site_data["folder_path"],
+                    "neighbouring_estates.shp",
+                ),
+                layer_name="Neighbouring estates",
+            )
         )
 
         neighbour_groups = group_neighbouring_estates(
-            neighbouring_estates_path=neighbouring_estates_path,
+            neighbouring_estates_path=(
+                neighbouring_estates_path
+            ),
+            group_fields=(
+                country_config
+                .ESTATE_CONFIG["group_fields"]
+            ),
         )
 
         dissolved_neighbour_paths = dissolve_neighbouring_groups(

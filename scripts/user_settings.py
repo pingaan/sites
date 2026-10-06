@@ -9,7 +9,7 @@ class UserSettings:
     language: str = "en"
     min_ineligible_patch_area_m2: float = 150.0
     contour_interval_m: float = 5.0
-    country_code: str = "SE"
+    country_code: str = "FI"
     fill_solar_holes: bool = True
     solar_inward_buffer_m: float = 10.0
     slope_thresholds: tuple[float, ...] = (

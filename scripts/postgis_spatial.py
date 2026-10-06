@@ -39,6 +39,7 @@ def extract_intersecting_features(
     intersection_layer_path,
     output_path,
     layer_name,
+    allow_empty=False,
 ):
     """
     Download features intersecting a local polygon layer.
@@ -215,7 +216,7 @@ def extract_intersecting_features(
         f"{feature_count} feature(s)."
     )
 
-    if feature_count == 0:
+    if feature_count == 0 and not allow_empty:
         raise ValueError(
             "The PostGIS spatial query returned "
             "no features."
@@ -225,7 +226,19 @@ def extract_intersecting_features(
         QgsVectorFileWriter.SaveVectorOptions()
     )
 
-    save_options.driverName = "ESRI Shapefile"
+    output_extension = os.path.splitext(
+        output_path
+    )[1].lower()
+
+    if output_extension == ".gpkg":
+        save_options.driverName = "GPKG"
+        save_options.layerName = os.path.splitext(
+            os.path.basename(output_path)
+        )[0]
+
+    else:
+        save_options.driverName = "ESRI Shapefile"
+
     save_options.fileEncoding = "UTF-8"
 
     writer_result = (
@@ -247,3 +260,66 @@ def extract_intersecting_features(
         )
 
     return output_path
+
+def download_country_layers_from_postgis(
+    layer_definitions,
+    intersection_layer_path,
+    temp_path,
+):
+    """
+    Download the spatial subset of every configured country
+    layer into the local analysis workspace.
+
+    Return the directory containing the downloaded datasets.
+    """
+
+    output_directory = os.path.join(
+        temp_path,
+        "postgis_country_sources",
+    )
+
+    os.makedirs(
+        output_directory,
+        exist_ok=True,
+    )
+
+    total = len(layer_definitions)
+
+    for number, definition in enumerate(
+        layer_definitions,
+        start=1,
+    ):
+        if "database" not in definition:
+            raise ValueError(
+                "Country-layer definition has no "
+                "database configuration: "
+                f"{definition['name']}"
+            )
+
+        output_path = os.path.join(
+            output_directory,
+            definition["source"],
+        )
+
+        print(
+            f"Downloading country layer "
+            f"{number}/{total}: "
+            f"{definition['name']}"
+        )
+
+        extract_intersecting_features(
+            dataset_config=definition["database"],
+            intersection_layer_path=(
+                intersection_layer_path
+            ),
+            output_path=output_path,
+            layer_name=definition["name"],
+            allow_empty=True,
+        )
+
+    print(
+        f"PostGIS country-layer subsets downloaded: "
+        f"{total}"
+    )
+
+    return output_directory

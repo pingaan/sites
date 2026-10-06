@@ -6,6 +6,9 @@ import requests
 import pandas as pd
 
 from osgeo import gdal
+from scripts.postgis_raster import (
+    sample_raster_values_from_postgis,
+)
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
@@ -61,6 +64,51 @@ SOLARGIS_RESOURCE_DEFINITIONS = {
     },
 }
 
+SOLARGIS_DATABASE_CONFIGS = {
+    "dif": {
+        "schema": "global",
+        "table": "solar_dif",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "dni": {
+        "schema": "global",
+        "table": "solar_dni",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "ghi": {
+        "schema": "global",
+        "table": "solar_ghi",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "gti": {
+        "schema": "global",
+        "table": "solar_gti",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "opta": {
+        "schema": "global",
+        "table": "solar_opta",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "pvout": {
+        "schema": "global",
+        "table": "solar_pvout",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+    "temperature": {
+        "schema": "global",
+        "table": "solar_temperature",
+        "raster_column": "rast",
+        "srid": 4326,
+    },
+}
+
 STRANG_PARAMETER_IDS = {
     "ghi": 117,
     "dni": 118,
@@ -68,51 +116,52 @@ STRANG_PARAMETER_IDS = {
 }
 
 def collect_solargis_resources(
-    raster_paths,
     longitude,
     latitude,
 ):
     """
-    Sample all configured Global Solar Atlas rasters.
+    Sample all configured Global Solar Atlas PostGIS rasters.
 
     Daily energy values are also converted into yearly totals.
     Missing raster coverage is represented by None so another
     provider, such as STRÅNG, can later be attempted.
-
-    Parameters
-    ----------
-    raster_paths : dict
-        SolarGIS raster paths from paths["solargis_rasters"].
-
-    longitude : float
-        Site longitude in EPSG:4326.
-
-    latitude : float
-        Site latitude in EPSG:4326.
-
-    Returns
-    -------
-    dict
-        Solar-resource results keyed by parameter name.
     """
 
     results = {}
 
-    print("Reading Global Solar Atlas data...")
+    print(
+        "Reading Global Solar Atlas data "
+        "from PostGIS..."
+    )
 
-    for key, definition in SOLARGIS_RESOURCE_DEFINITIONS.items():
-
-        if key not in raster_paths:
-            raise KeyError(
-                f"SolarGIS raster path is missing for: {key}"
-            )
-
-        raster_path = raster_paths[key]
-
-        value = sample_solargis_raster(
-            raster_path=raster_path,
+    sampled_values = (
+        sample_raster_values_from_postgis(
+            raster_configs=(
+                SOLARGIS_DATABASE_CONFIGS
+            ),
             longitude=longitude,
             latitude=latitude,
+        )
+    )
+
+    for key, definition in (
+        SOLARGIS_RESOURCE_DEFINITIONS.items()
+    ):
+        if key not in SOLARGIS_DATABASE_CONFIGS:
+            raise KeyError(
+                "SolarGIS database configuration "
+                f"is missing for: {key}"
+            )
+
+        database_config = (
+            SOLARGIS_DATABASE_CONFIGS[key]
+        )
+
+        value = sampled_values.get(key)
+
+        database_source = (
+            f"{database_config['schema']}."
+            f"{database_config['table']}"
         )
 
         result = {
@@ -120,33 +169,42 @@ def collect_solargis_resources(
             "value": value,
             "unit": definition["unit"],
             "yearly_value": None,
-            "yearly_unit": definition["yearly_unit"],
+            "yearly_unit": (
+                definition["yearly_unit"]
+            ),
             "source": None,
-            "raster_path": raster_path,
+            "raster_path": None,
+            "database_source": database_source,
             "status": "missing",
         }
 
         if value is None:
             print(
                 f"{definition['name']}: "
-                "no Global Solar Atlas data available."
+                "no Global Solar Atlas data "
+                "available."
             )
 
             results[key] = result
             continue
 
-        result["source"] = "Global Solar Atlas"
+        result["source"] = (
+            "Global Solar Atlas"
+        )
         result["status"] = "available"
 
         print(
             f"{definition['name']}: "
-            f"{value:.3f} {definition['unit']}"
+            f"{value:.3f} "
+            f"{definition['unit']}"
         )
 
         if definition["daily_total"]:
             yearly_value = value * 365
 
-            result["yearly_value"] = yearly_value
+            result["yearly_value"] = (
+                yearly_value
+            )
 
             print(
                 f"{definition['name']}: "

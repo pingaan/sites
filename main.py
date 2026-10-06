@@ -1,7 +1,11 @@
 import gc
 import os
 
+from scripts.postgis_raster import (
+    download_dem_from_postgis,
+)
 from scripts.postgis_spatial import (
+    download_country_layers_from_postgis,
     extract_intersecting_features,
 )
 from scripts.postgis_backend import (
@@ -45,6 +49,7 @@ from scripts.municipality import (
 )
 from scripts.meteorology import (
     calculate_average_wind_speed,
+    calculate_postgis_site_raster_mean,
     calculate_site_raster_mean,
     read_site_load_values,
 )
@@ -148,7 +153,7 @@ from scripts.site_selection import (
 )
 
 
-estate = "kävlinge ålstorp 19:63"
+estate = "434-415-1-226"
 custom_polygon = None
 #custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
 
@@ -468,17 +473,14 @@ def main():
             layer_path=site_layer_path,
         )
 
-        dem_tile_paths = select_dem_tiles(
-            site_extent=dem_search_extent,
-            data_path=paths["data_path"],
-            dem_path=paths["path_dem"],
-            temp_path=site_data["temp_path"],
-            dem_index_crs=paths["dem_index_crs"],
-        )
-
-        merged_dem_path = merge_dem_tiles(
-            dem_tile_paths=dem_tile_paths,
-            temp_path=site_data["temp_path"],
+        merged_dem_path = (
+            download_dem_from_postgis(
+                site_extent=dem_search_extent,
+                dem_config=(
+                    country_config.DEM_CONFIG
+                ),
+                temp_path=site_data["temp_path"],
+            )
         )
 
         clipped_dem_path = clip_dem_to_site(
@@ -573,9 +575,17 @@ def main():
             interval_m=settings.contour_interval_m,
         )
 
+        country_data_path = (
+            download_country_layers_from_postgis(
+                layer_definitions=country_config.LAYERS,
+                intersection_layer_path=buffer_paths["5km"],
+                temp_path=site_data["temp_path"],
+            )
+        )
+
         clipped_country_layers = clip_country_layers(
             layer_definitions=country_config.LAYERS,
-            data_path=paths["data_path"],
+            data_path=country_data_path,
             context_polygon_path=buffer_paths["5km"],
             temp_path=site_data["temp_path"],
             target_crs=working_crs,
@@ -598,16 +608,60 @@ def main():
             folder_path=site_data["folder_path"],
         )
 
+        soil_depth_settings = getattr(
+            country_config,
+            "SOIL_DEPTH_SETTINGS",
+            None,
+        )
+
+        if soil_depth_settings is not None:
+            soil_depth_settings = dict(
+                soil_depth_settings
+            )
+
+            soil_depth_database = (
+                soil_depth_settings.get("database")
+            )
+
+            if soil_depth_database is None:
+                raise ValueError(
+                    "Soil-depth settings have no "
+                    "PostGIS database configuration."
+                )
+
+            soil_depth_raster_path = (
+                download_dem_from_postgis(
+                    site_extent=dem_search_extent,
+                    dem_config=soil_depth_database,
+                    temp_path=site_data["temp_path"],
+                    output_filename=(
+                        "postgis_soil_depth.tif"
+                    ),
+                    raster_label="soil-depth raster",
+                )
+            )
+
+            soil_depth_settings[
+                "raster_source"
+            ] = os.path.basename(
+                soil_depth_raster_path
+            )
+
+            soil_depth_data_path = (
+                site_data["temp_path"]
+            )
+
+        else:
+            soil_depth_data_path = paths[
+                "data_path"
+            ]
+
         soil_depth_result = analyse_soil_depth_by_type(
             analysis_layer_path=site_layer_path,
             country_layer_outputs=country_layer_outputs,
-            data_path=paths["data_path"],
+            data_path=soil_depth_data_path,
             temp_path=site_data["temp_path"],
-            settings=getattr(
-                country_config,
-                "SOIL_DEPTH_SETTINGS",
-                None,
-            ),
+            settings=soil_depth_settings,
         )
 
         solar_remaining_path = subtract_solar_constraints(
@@ -801,7 +855,6 @@ def main():
         )
 
         solar_resource_data = collect_solargis_resources(
-            raster_paths=paths["solargis_rasters"],
             longitude=site_centroid["longitude"],
             latitude=site_centroid["latitude"],
         )
@@ -854,14 +907,46 @@ def main():
             {},
         )
 
+        wind_settings = (
+            meteorology_settings.get(
+                "wind_speed"
+            )
+        )
+
+        wind_source_path = None
+
+        if wind_settings:
+            wind_database = (
+                wind_settings.get("database")
+            )
+
+            if wind_database is None:
+                raise ValueError(
+                    "Wind-speed settings have no "
+                    "PostGIS database configuration."
+                )
+
+            wind_source_path = os.path.join(
+                site_data["temp_path"],
+                "postgis_wind_map.shp",
+            )
+
+            extract_intersecting_features(
+                dataset_config=wind_database,
+                intersection_layer_path=(
+                    site_layer_path
+                ),
+                output_path=wind_source_path,
+                layer_name="Wind-speed source",
+                allow_empty=True,
+            )
+
         average_wind_speed = (
             calculate_average_wind_speed(
                 site_layer_path=site_layer_path,
-                data_path=paths["data_path"],
+                source_path=wind_source_path,
                 temp_path=site_data["temp_path"],
-                wind_settings=meteorology_settings.get(
-                    "wind_speed"
-                ),
+                wind_settings=wind_settings,
             )
         )
 
@@ -894,24 +979,36 @@ def main():
             {},
         )
 
-        humidity_result = calculate_site_raster_mean(
-            site_layer_path=site_layer_path,
-            data_path=paths["data_path"],
-            temp_path=site_data["temp_path"],
-            raster_settings=raster_data_settings.get(
-                "humidity"
-            ),
-            output_name="meteorology_humidity.tif",
+        humidity_result = (
+            calculate_postgis_site_raster_mean(
+                site_layer_path=site_layer_path,
+                site_extent=dem_search_extent,
+                temp_path=site_data["temp_path"],
+                raster_settings=(
+                    raster_data_settings.get(
+                        "humidity"
+                    )
+                ),
+                output_name=(
+                    "meteorology_humidity.tif"
+                ),
+            )
         )
 
-        air_pressure_result = calculate_site_raster_mean(
-            site_layer_path=site_layer_path,
-            data_path=paths["data_path"],
-            temp_path=site_data["temp_path"],
-            raster_settings=raster_data_settings.get(
-                "air_pressure"
-            ),
-            output_name="meteorology_air_pressure.tif",
+        air_pressure_result = (
+            calculate_postgis_site_raster_mean(
+                site_layer_path=site_layer_path,
+                site_extent=dem_search_extent,
+                temp_path=site_data["temp_path"],
+                raster_settings=(
+                    raster_data_settings.get(
+                        "air_pressure"
+                    )
+                ),
+                output_name=(
+                    "meteorology_air_pressure.tif"
+                ),
+            )
         )
 
         # -------------------------------------------------
@@ -927,12 +1024,16 @@ def main():
             temperature_result = {
                 "name": "Average air temperature",
                 "value": solargis_temperature["value"],
-                "unit": solargis_temperature["unit"],
-                "source": solargis_temperature["source"],
-                "status": solargis_temperature["status"],
-                "output_path": solargis_temperature.get(
-                    "raster_path"
+                "unit": solargis_temperature.get(
+                    "unit",
+                    "°C",
                 ),
+                "source": solargis_temperature.get(
+                    "source",
+                    "Global Solar Atlas",
+                ),
+                "status": "available",
+                "output_path": None,
             }
 
             print(
@@ -949,12 +1050,14 @@ def main():
             )
 
             temperature_result = (
-                calculate_site_raster_mean(
+                calculate_postgis_site_raster_mean(
                     site_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    site_extent=dem_search_extent,
                     temp_path=site_data["temp_path"],
-                    raster_settings=raster_data_settings.get(
-                        "temperature_fallback"
+                    raster_settings=(
+                        raster_data_settings.get(
+                            "temperature_fallback"
+                        )
                     ),
                     output_name=(
                         "meteorology_temperature.tif"
@@ -982,9 +1085,9 @@ def main():
             )
 
             snow_depth_results[month_name] = (
-                calculate_site_raster_mean(
+                calculate_postgis_site_raster_mean(
                     site_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    site_extent=dem_search_extent,
                     temp_path=site_data["temp_path"],
                     raster_settings=month_settings,
                     output_name=output_name,
@@ -1012,7 +1115,6 @@ def main():
         political_result = (
             analyse_municipality_politics(
                 site_layer_path=site_layer_path,
-                data_path=paths["data_path"],
                 political_settings=getattr(
                     country_config,
                     "POLITICAL_SETTINGS",
@@ -1053,10 +1155,36 @@ def main():
         bos_coverage_path = None
 
         if bos_result["status"] == "ready":
+            landcover_database = (
+                bos_settings.get(
+                    "landcover_database"
+                )
+            )
+
+            if landcover_database is None:
+                raise ValueError(
+                    "BoS settings have no PostGIS "
+                    "land-cover configuration."
+                )
+
+            download_dem_from_postgis(
+                site_extent=dem_search_extent,
+                dem_config=landcover_database,
+                temp_path=site_data["temp_path"],
+                output_filename=(
+                    bos_settings[
+                        "landcover_raster"
+                    ]
+                ),
+                raster_label=(
+                    "BoS land-cover raster"
+                ),
+            )
+
             bos_landcover_result = (
                 prepare_bos_landcover(
                     analysis_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    data_path=site_data["temp_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1070,7 +1198,7 @@ def main():
                             "landcover_path"
                         ]
                     ),
-                    data_path=paths["data_path"],
+                    data_path=site_data["folder_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1079,7 +1207,7 @@ def main():
             bos_override_results = (
                 prepare_bos_override_layers(
                     analysis_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    data_path=site_data["folder_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1109,12 +1237,6 @@ def main():
                     ),
                     temp_path=site_data["temp_path"],
                 )
-            )
-
-            bos_summary = summarise_bos_coverage(
-                analysis_layer_path=site_layer_path,
-                bos_priority_result=bos_priority_result,
-                bos_settings=bos_settings,
             )
 
             bos_summary = summarise_bos_coverage(

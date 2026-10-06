@@ -427,6 +427,10 @@ def clip_bos_vector_source(
 ):
     """
     Clip one configured BoS vector source to the analysis site.
+
+    A missing local source means that the earlier PostGIS spatial
+    query found no intersecting features. In that case, create a
+    valid empty polygon layer so later BoS processing can continue.
     """
 
     source_path = os.path.join(
@@ -434,29 +438,10 @@ def clip_bos_vector_source(
         source_filename,
     )
 
-    if not os.path.isfile(source_path):
-        raise FileNotFoundError(
-            f"Configured BoS source does not exist: "
-            f"{source_path}"
-        )
-
-    source = QgsVectorLayer(
-        source_path,
-        display_name,
-        "ogr",
+    output_path = os.path.join(
+        temp_path,
+        output_filename,
     )
-
-    if not source.isValid():
-        raise ValueError(
-            f"Failed to load BoS source: "
-            f"{source_path}"
-        )
-
-    if source.geometryType() != QgsWkbTypes.PolygonGeometry:
-        raise ValueError(
-            f"BoS source must contain polygons: "
-            f"{display_name}"
-        )
 
     analysis_layer = QgsVectorLayer(
         analysis_layer_path,
@@ -466,14 +451,61 @@ def clip_bos_vector_source(
 
     if not analysis_layer.isValid():
         raise ValueError(
-            f"Failed to load BoS analysis site: "
+            "Failed to load BoS analysis site: "
             f"{analysis_layer_path}"
         )
 
-    output_path = os.path.join(
-        temp_path,
-        output_filename,
+    if not os.path.isfile(source_path):
+        processing.run(
+            "native:extractbyexpression",
+            {
+                "INPUT": analysis_layer,
+                "EXPRESSION": "0 = 1",
+                "OUTPUT": output_path,
+            },
+        )
+
+        empty_layer = QgsVectorLayer(
+            output_path,
+            display_name,
+            "ogr",
+        )
+
+        if not empty_layer.isValid():
+            raise RuntimeError(
+                "Failed to create empty BoS layer: "
+                f"{output_path}"
+            )
+
+        print(
+            f"BoS {display_name.lower()} coverage: "
+            "no local PostGIS features; using 0.00 ha."
+        )
+
+        return {
+            "status": "empty",
+            "output_path": output_path,
+            "area_ha": 0.0,
+            "feature_count": 0,
+        }
+
+    source = QgsVectorLayer(
+        source_path,
+        display_name,
+        "ogr",
     )
+
+    if not source.isValid():
+        raise ValueError(
+            "Failed to load BoS source: "
+            f"{source_path}"
+        )
+
+    if source.geometryType() != QgsWkbTypes.PolygonGeometry:
+        raise ValueError(
+            "BoS source must contain polygons: "
+            f"{display_name}"
+        )
 
     processing.run(
         "native:clip",
@@ -499,7 +531,7 @@ def clip_bos_vector_source(
 
     if not clipped_layer.isValid():
         raise RuntimeError(
-            f"Failed to load clipped BoS source: "
+            "Failed to load clipped BoS source: "
             f"{output_path}"
         )
 

@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 """
 Swedish dataset configuration.
@@ -174,27 +174,27 @@ def _layer(
 LAYERS = [
     # Power infrastructure
     _layer(
-        "powerlines-300-500.shp", "300–500 kV ledning",
+        "powerlines-300-500.shp", "300â€“500 kV ledning",
         solar_buffer_m=55, wind_buffer_m=300,
     ),
     _layer(
-        "powerlines-underground.shp", "Nedgrävd ledning",
+        "powerlines-underground.shp", "NedgrÃ¤vd ledning",
         solar_buffer_m=15, wind_buffer_m=15,
     ),
     _layer(
-        "powerlines-170-220.shp", "170–220 kV ledning",
+        "powerlines-170-220.shp", "170â€“220 kV ledning",
         solar_buffer_m=55, wind_buffer_m=300,
     ),
     _layer(
-        "powerlines-80-170.shp", "80–170 kV ledning",
+        "powerlines-80-170.shp", "80â€“170 kV ledning",
         solar_buffer_m=55, wind_buffer_m=300,
     ),
     _layer(
-        "powerlines-10-80.shp", "10–80 kV ledning",
+        "powerlines-10-80.shp", "10â€“80 kV ledning",
         solar_buffer_m=55, wind_buffer_m=300,
     ),
     _layer(
-        "powerlines-null.shp", "Okänd ledning",
+        "powerlines-null.shp", "OkÃ¤nd ledning",
         solar_buffer_m=55, wind_buffer_m=300,
     ),
 
@@ -216,7 +216,7 @@ LAYERS = [
         solar_buffer_m=10, wind_buffer_m=10,
     ),
     _layer(
-        "misc_poly.shp", "Övrigt",
+        "misc_poly.shp", "Ã–vrigt",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
@@ -224,25 +224,25 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=300,
     ),
     _layer(
-        "peat_extractions_poly.shp", "Torvtäkt",
+        "peat_extractions_poly.shp", "TorvtÃ¤kt",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "weather_station_temp_poly.shp", "Väderstation (temperatur)",
+        "weather_station_temp_poly.shp", "VÃ¤derstation (temperatur)",
         solar_buffer_m=100, wind_buffer_m=100,
     ),
     _layer(
-        "weather_station_wind_poly.shp", "Väderstation (vind)",
+        "weather_station_wind_poly.shp", "VÃ¤derstation (vind)",
         solar_buffer_m=100, wind_buffer_m=3000,
     ),
 
     # Transport
     _layer(
-        "railway.shp", "Järnväg",
+        "railway.shp", "JÃ¤rnvÃ¤g",
         solar_buffer_m=15, wind_buffer_m=350,
     ),
     _layer(
-        "roads.shp", "Väg",
+        "roads.shp", "VÃ¤g",
         solar_buffer_m=8, wind_buffer_m=50,
     ),
     _layer(
@@ -260,29 +260,29 @@ LAYERS = [
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "vmi_low.shp", "VMI, klass 3–4",
+        "vmi_low.shp", "VMI, klass 3â€“4",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "cultural_reserve.shp", "Kulturmiljövård (MB3, kap. 6)",
+        "cultural_reserve.shp", "KulturmiljÃ¶vÃ¥rd (MB3, kap. 6)",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
         "outdoor_life_areas.shp",
-        "Friluftsliv (rörligt, MB3–4, kap. 1–2, 6)",
+        "Friluftsliv (rÃ¶rligt, MB3â€“4, kap. 1â€“2, 6)",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
         "protected_water_courses.shp",
-        "Skyddsområde (vattendrag, MB4, kap. 6)",
+        "SkyddsomrÃ¥de (vattendrag, MB4, kap. 6)",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "noble_forest.shp", "Ädelskog",
+        "noble_forest.shp", "Ã„delskog",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "water_flow_poly.shp", "Flödesriktning",
+        "water_flow_poly.shp", "FlÃ¶desriktning",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
@@ -290,19 +290,19 @@ LAYERS = [
         solar_buffer_m=15, wind_buffer_m=50,
     ),
     _layer(
-        "water_surfaces.shp", "Sjö/större vattendrag",
+        "water_surfaces.shp", "SjÃ¶/stÃ¶rre vattendrag",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
-        "ancient_remains_points_poly.shp", "Lämning",
+        "ancient_remains_points_poly.shp", "LÃ¤mning",
         solar_buffer_m=10, wind_buffer_m=10,
     ),
     _layer(
-        "ancient_remains_lines.shp", "Lämning",
+        "ancient_remains_lines.shp", "LÃ¤mning",
         solar_buffer_m=10, wind_buffer_m=10,
     ),
     _layer(
-        "ancient_remains_polygons.shp", "Lämning",
+        "ancient_remains_polygons.shp", "LÃ¤mning",
         solar_buffer_m=10, wind_buffer_m=10,
     ),
     _layer(
@@ -314,19 +314,19 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
-        "inaccessable.shp", "Otillgängligt område",
+        "inaccessable.shp", "OtillgÃ¤ngligt omrÃ¥de",
         solar_buffer_m=6, wind_buffer_m=6,
     ),
     _layer(
-        "rich_birdlife.shp", "Rikt fågelliv",
+        "rich_birdlife.shp", "Rikt fÃ¥gelliv",
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
-        "biotopes.shp", "Biotopskyddsområde",
+        "biotopes.shp", "BiotopskyddsomrÃ¥de",
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
-        "sensitive_wilderness.shp", "Känslig vildmark",
+        "sensitive_wilderness.shp", "KÃ¤nslig vildmark",
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
@@ -342,7 +342,7 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
-        "nature_conservations.shp", "Naturvård",
+        "nature_conservations.shp", "NaturvÃ¥rd",
         solar_buffer_m=50, wind_buffer_m=550,
     ),
     _layer(
@@ -364,7 +364,7 @@ LAYERS = [
 
     # Land use
     _layer(
-        "military_areas.shp", "Militärt område",
+        "military_areas.shp", "MilitÃ¤rt omrÃ¥de",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
@@ -376,7 +376,7 @@ LAYERS = [
         solar_buffer_m=6, wind_buffer_m=6,
     ),
     _layer(
-        "reindeer_info.shp", "Rennäring",
+        "reindeer_info.shp", "RennÃ¤ring",
         solar_buffer_m=6, wind_buffer_m=6,
     ),
 
@@ -394,11 +394,11 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=300,
     ),
     _layer(
-        "other_building.shp", "Byggnad (övrig)",
+        "other_building.shp", "Byggnad (Ã¶vrig)",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
-        "facilities.shp", "Anläggning",
+        "facilities.shp", "AnlÃ¤ggning",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
@@ -406,7 +406,7 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=50,
     ),
     _layer(
-        "public_function.shp", "Samhällsfunktion",
+        "public_function.shp", "SamhÃ¤llsfunktion",
         solar_buffer_m=50, wind_buffer_m=50,
     ),
 
@@ -416,19 +416,19 @@ LAYERS = [
         solar_buffer_m=50, wind_buffer_m=0,
     ),
     _layer(
-        "helicopterpads.shp", "Närliggande helikopterplatta",
+        "helicopterpads.shp", "NÃ¤rliggande helikopterplatta",
         solar_buffer_m=0, wind_buffer_m=6,
     ),
     _layer(
-        "landing_strips.shp", "Närliggande landningsbana",
+        "landing_strips.shp", "NÃ¤rliggande landningsbana",
         solar_buffer_m=0, wind_buffer_m=6,
     ),
     _layer(
-        "minor_airports.shp", "Närliggande mindre flygplats",
+        "minor_airports.shp", "NÃ¤rliggande mindre flygplats",
         solar_buffer_m=0, wind_buffer_m=6,
     ),
     _layer(
-        "major_airports.shp", "Närliggande större flygplats",
+        "major_airports.shp", "NÃ¤rliggande stÃ¶rre flygplats",
         solar_buffer_m=0, wind_buffer_m=6,
     ),
 
@@ -438,7 +438,7 @@ LAYERS = [
         solar_buffer_m=0, wind_buffer_m=0,
     ),
     _layer(
-        "municip_borders.shp", "Kommungräns",
+        "municip_borders.shp", "KommungrÃ¤ns",
         solar_buffer_m=0, wind_buffer_m=0,
     ),
 ]
@@ -686,7 +686,7 @@ METEOROLOGY_SETTINGS = {
         "temperature_fallback": {
             "source": "temp_data.tif",
             "name": "Average air temperature",
-            "unit": "°C",
+            "unit": "Â°C",
             "source_name": "Swedish meteorological raster",
             "database": {
                 "schema": "se",
@@ -712,7 +712,7 @@ METEOROLOGY_SETTINGS = {
         "snow_depth": {
             month_name: {
                 "source": f"snow_depth_{month_code}.tif",
-                "name": f"Average snow depth — {month_name}",
+                "name": f"Average snow depth â€” {month_name}",
                 "unit": "m",
                 "source_name": "Swedish meteorological raster",
                 "precision": 3,
@@ -754,8 +754,8 @@ POLITICAL_SETTINGS = {
         "L": "Liberalerna",
         "S": "Socialdemokraterna",
         "C": "Centerpartiet",
-        "MP": "Miljöpartiet",
-        "V": "Vänsterpartiet",
+        "MP": "MiljÃ¶partiet",
+        "V": "VÃ¤nsterpartiet",
     },
 }
 
@@ -819,37 +819,37 @@ GRID_PROXIMITY_SETTINGS = {
 
     "layers": [
         {
-            "name": "300–500 kV ledning",
+            "name": "300â€“500 kV ledning",
             "type": "power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,
         },
         {
-            "name": "Nedgrävd ledning",
+            "name": "NedgrÃ¤vd ledning",
             "type": "underground_power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,
         },
         {
-            "name": "170–220 kV ledning",
+            "name": "170â€“220 kV ledning",
             "type": "power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,
         },
         {
-            "name": "80–170 kV ledning",
+            "name": "80â€“170 kV ledning",
             "type": "power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,
         },
         {
-            "name": "10–80 kV ledning",
+            "name": "10â€“80 kV ledning",
             "type": "power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,
         },
         {
-            "name": "Okänd ledning",
+            "name": "OkÃ¤nd ledning",
             "type": "power_line",
             "voltage_field": "max_voltag",
             "voltage_divisor": 1000.0,

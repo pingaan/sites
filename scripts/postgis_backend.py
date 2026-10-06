@@ -145,9 +145,15 @@ def extract_estate_from_postgis(
     )
 
     if not estate_layer.isValid():
+        provider_error = (
+            estate_layer.error().summary()
+        )
+
         raise RuntimeError(
             "Failed to load the PostGIS table "
-            f"{schema}.{table}."
+            f"{schema}.{table}.\n"
+            f"PostGIS provider error: "
+            f"{provider_error}"
         )
 
     feature_count = estate_layer.featureCount()

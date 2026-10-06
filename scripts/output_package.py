@@ -221,6 +221,36 @@ def create_output_geopackage(
         options.layerName = table_name
         options.fileEncoding = "UTF-8"
 
+        source_field_names = {
+            field.name().casefold()
+            for field in source_layer.fields()
+        }
+
+        geopackage_fid = "fid"
+
+        if geopackage_fid.casefold() in source_field_names:
+            geopackage_fid = "gpkg_fid"
+            suffix = 2
+
+            while (
+                geopackage_fid.casefold()
+                in source_field_names
+            ):
+                geopackage_fid = (
+                    f"gpkg_fid_{suffix}"
+                )
+                suffix += 1
+
+            print(
+                f"GeoPackage internal identifier for "
+                f"{requested_name}: {geopackage_fid} "
+                "(source field 'fid' preserved)."
+            )
+
+        options.layerOptions = [
+            f"FID={geopackage_fid}",
+        ]
+
         if first_layer:
             options.actionOnExistingFile = (
                 QgsVectorFileWriter

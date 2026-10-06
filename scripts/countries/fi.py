@@ -15,7 +15,7 @@ A zero buffer means no additional buffer is applied.
 
 
 COUNTRY_CODE = "FI"
-COUNTRY_NAME = "Suomi"
+COUNTRY_NAME = "Finland"
 
 
 ESTATE_CONFIG = {
@@ -146,42 +146,42 @@ LAYERS = [
     # Power infrastructure
     _layer(
         "powerlines-300-500.shp",
-        "300–500 kV voimajohto",
+        "300–500 kV ledning",
         "powerlines_300_500",
         solar_buffer_m=55,
         wind_buffer_m=300,
     ),
     _layer(
         "powerlines-220-300.shp",
-        "220–300 kV voimajohto",
+        "220–300 kV ledning",
         "powerlines_220_300",
         solar_buffer_m=55,
         wind_buffer_m=300,
     ),
     _layer(
         "powerlines-80-170.shp",
-        "80–170 kV voimajohto",
+        "80–170 kV ledning",
         "powerlines_80_170",
         solar_buffer_m=55,
         wind_buffer_m=300,
     ),
     _layer(
         "powerlines-10-80.shp",
-        "10–80 kV voimajohto",
+        "10–80 kV ledning",
         "powerlines_10_80",
         solar_buffer_m=55,
         wind_buffer_m=300,
     ),
     _layer(
         "powerlines-null.shp",
-        "Tuntematon voimajohto",
+        "Okänd ledning",
         "powerlines_unknown",
         solar_buffer_m=55,
         wind_buffer_m=300,
     ),
     _layer(
         "power_stations.shp",
-        "Sähköasema",
+        "Transformatorstation",
         "power_stations",
         solar_buffer_m=15,
         wind_buffer_m=300,
@@ -190,21 +190,21 @@ LAYERS = [
     # Property and transport
     _layer(
         "estates.shp",
-        "Kiinteistökartta",
+        "Fastighetskarta",
         "estates",
         solar_buffer_m=0,
         wind_buffer_m=0,
     ),
     _layer(
         "hiking_trails.shp",
-        "Retkeilyreitti",
+        "Vandringsled",
         "hiking_trails",
         solar_buffer_m=50,
         wind_buffer_m=300,
     ),
     _layer(
         "railway.shp",
-        "Rautatie",
+        "Järnväg",
         "railway",
         solar_buffer_m=15,
         wind_buffer_m=350,
@@ -212,7 +212,7 @@ LAYERS = [
     ),
     _layer(
         "roads.shp",
-        "Tie",
+        "Väg",
         "roads",
         solar_buffer_m=8,
         wind_buffer_m=50,
@@ -220,14 +220,14 @@ LAYERS = [
     ),
     _layer(
         "minor_roads.shp",
-        "Pientie",
+        "Mindre väg",
         "minor_roads",
         solar_buffer_m=8,
         wind_buffer_m=50,
     ),
     _layer(
         "bike_lane.shp",
-        "Pyörätie",
+        "Cykelbana",
         "bike_lane",
         solar_buffer_m=0,
         wind_buffer_m=50,
@@ -236,70 +236,70 @@ LAYERS = [
     # Cultural and natural interests
     _layer(
         "ancient_remains_polygons.shp",
-        "Muinaisjäännös",
+        "Lämning",
         "ancient_remains_polygons",
         solar_buffer_m=10,
         wind_buffer_m=10,
     ),
     _layer(
         "building_heritage.shp",
-        "Suojeltu rakennus",
+        "Byggnadsminne",
         "building_heritage",
         solar_buffer_m=10,
         wind_buffer_m=10,
     ),
     _layer(
         "cultural_reserve.shp",
-        "Kulttuuriympäristö",
+        "Kulturreservat",
         "cultural_reserve",
         solar_buffer_m=0,
         wind_buffer_m=0,
     ),
     _layer(
         "national_parks.shp",
-        "Kansallispuisto",
+        "Nationalpark",
         "national_parks",
         solar_buffer_m=50,
         wind_buffer_m=550,
     ),
     _layer(
         "nature_conservations.shp",
-        "Luonnonsuojelukohde",
+        "Naturvård",
         "nature_conservations",
         solar_buffer_m=50,
         wind_buffer_m=550,
     ),
     _layer(
         "nature_reserves.shp",
-        "Luonnonsuojelualue",
+        "Naturreservat",
         "nature_reserves",
         solar_buffer_m=50,
         wind_buffer_m=550,
     ),
     _layer(
         "rich_birdlife.shp",
-        "Arvokas lintualue",
+        "Rikt fågelliv",
         "rich_birdlife",
         solar_buffer_m=50,
         wind_buffer_m=550,
     ),
     _layer(
         "protected_water_areas.shp",
-        "Suojeltu vesialue",
+        "Skyddsområde (vatten)",
         "protected_water_areas",
         solar_buffer_m=0,
         wind_buffer_m=0,
     ),
     _layer(
         "rivers.shp",
-        "Joet",
+        "Vattendrag",
         "rivers",
         solar_buffer_m=50,
         wind_buffer_m=50,
     ),
     _layer(
         "ditches.shp",
-        "Ojat",
+        "Diken",
         "ditches",
         solar_buffer_m=0,
         wind_buffer_m=0,
@@ -308,14 +308,14 @@ LAYERS = [
     # Land use
     _layer(
         "military_areas.shp",
-        "Sotilasalue",
+        "Militärt område",
         "military_areas",
         solar_buffer_m=50,
         wind_buffer_m=50,
     ),
     _layer(
         "arable_land.shp",
-        "Viljelysmaa",
+        "Jordbruk",
         "arable_land",
         solar_buffer_m=6,
         wind_buffer_m=6,
@@ -324,14 +324,14 @@ LAYERS = [
     # Buildings
     _layer(
         "buildings.shp",
-        "Rakennus (muu)",
+        "Byggnad (övrig)",
         "buildings",
         solar_buffer_m=50,
         wind_buffer_m=50,
     ),
     _layer(
         "residential_buildings.shp",
-        "Asuinrakennus",
+        "Bostadshus",
         "residential_buildings",
         solar_buffer_m=50,
         wind_buffer_m=1500,

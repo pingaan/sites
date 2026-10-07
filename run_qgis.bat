@@ -2,6 +2,8 @@
 setlocal
 cd /d "%~dp0"
 
+set "PATH=%SystemRoot%\System32;%SystemRoot%\System32\WindowsPowerShell\v1.0;%SystemRoot%\System32\OpenSSH;%PATH%"
+
 set "PYTHONUNBUFFERED=1"
 set "SITES_DATABASE_ENV=%LOCALAPPDATA%\Sites\database.env"
 
@@ -27,7 +29,7 @@ if not defined SITES_DB_PASSWORD (
     exit /b 1
 )
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_sites_tunnel.ps1"
+"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_sites_tunnel.ps1"
 
 if errorlevel 1 (
     echo ERROR: Could not establish the Sites database tunnel.

@@ -153,13 +153,39 @@ from scripts.site_selection import (
 )
 
 
-estate = "434-415-1-226"
-custom_polygon = None
-#custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
+estate = (
+    os.environ.get(
+        "SITES_ESTATE",
+        "434-415-1-226",
+    ).strip()
+    or None
+)
+
+custom_polygon = (
+    os.environ.get(
+        "SITES_CUSTOM_POLYGON",
+        "",
+    ).strip()
+    or None
+)
 
 def main():
 
     settings = UserSettings()
+
+    supplied_country_code = (
+        os.environ.get(
+            "SITES_COUNTRY_CODE",
+            "",
+        )
+        .strip()
+        .upper()
+    )
+
+    if supplied_country_code:
+        settings.country_code = (
+            supplied_country_code
+        )
 
     run_id = create_run_id()
 

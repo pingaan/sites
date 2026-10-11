@@ -1406,7 +1406,7 @@ def main():
 
         report_path = os.path.join(
             site_data["folder_path"],
-            f"prints ({site_data['folder_name']}).txt",
+            "project_report.md",
         )
 
         cleanup_plan = cleanup_analysis_outputs(

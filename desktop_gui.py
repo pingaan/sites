@@ -31,6 +31,7 @@ from qgis.PyQt.QtWidgets import (
     QToolButton,
     QTreeWidget,
     QTreeWidgetItem,
+    QTextBrowser,
 )
 
 from qgis.core import (
@@ -138,6 +139,10 @@ class SitesDesktop(QMainWindow):
     # ---------------------------------------------------------
 
     def create_map_canvases(self):
+        # -------------------------------------------------
+        # Main interactive map
+        # -------------------------------------------------
+
         self.map_canvas = QgsMapCanvas()
 
         self.map_canvas.setCanvasColor(
@@ -148,9 +153,48 @@ class SitesDesktop(QMainWindow):
             True
         )
 
-        self.setCentralWidget(
-            self.map_canvas
+        # -------------------------------------------------
+        # Project report viewer
+        # -------------------------------------------------
+
+        self.project_report_view = QTextBrowser()
+
+        self.project_report_view.setOpenExternalLinks(
+            True
         )
+
+        self.project_report_view.setMarkdown(
+            "# Project information\n\n"
+            "Load a local project to view its report."
+        )
+
+        # -------------------------------------------------
+        # Central Map and Info tabs
+        # -------------------------------------------------
+
+        self.central_tabs = QTabWidget()
+
+        self.central_tabs.setDocumentMode(
+            True
+        )
+
+        self.central_tabs.addTab(
+            self.map_canvas,
+            "Map",
+        )
+
+        self.central_tabs.addTab(
+            self.project_report_view,
+            "Info",
+        )
+
+        self.setCentralWidget(
+            self.central_tabs
+        )
+
+        # -------------------------------------------------
+        # Small country-overview map
+        # -------------------------------------------------
 
         self.overview_canvas = QgsMapCanvas()
 
@@ -162,200 +206,12 @@ class SitesDesktop(QMainWindow):
             True
         )
 
+        # -------------------------------------------------
+        # Default mouse navigation
+        # -------------------------------------------------
+
         self.pan_tool = QgsMapToolPan(
             self.map_canvas
-        )
-
-    # ---------------------------------------------------------
-    # Local projects panel
-    # ---------------------------------------------------------
-
-    def create_projects_panel(self):
-        self.projects_dock = QDockWidget(
-            "Projects",
-            self,
-        )
-
-        self.projects_dock.setObjectName(
-            "projects_dock"
-        )
-
-        self.projects_tree = QTreeWidget()
-
-        self.projects_tree.setHeaderLabels(
-            [
-                "Project",
-                "Updated",
-            ]
-        )
-
-        self.projects_tree.setAlternatingRowColors(
-            True
-        )
-
-        self.projects_tree.setColumnWidth(
-            0,
-            190,
-        )
-
-        self.projects_dock.setWidget(
-            self.projects_tree
-        )
-
-        self.addDockWidget(
-            Qt.LeftDockWidgetArea,
-            self.projects_dock,
-        )
-
-        self.refresh_project_list()
-
-    def refresh_project_list(self):
-        self.projects_tree.clear()
-
-        if not self.projects_root.is_dir():
-            placeholder = QTreeWidgetItem(
-                [
-                    "No local projects found",
-                    "",
-                ]
-            )
-
-            self.projects_tree.addTopLevelItem(
-                placeholder
-            )
-
-            return
-
-        project_files = list(
-            self.projects_root.rglob("*.qgz")
-        )
-
-        grouped_projects = {}
-
-        for project_path in project_files:
-            try:
-                relative_path = (
-                    project_path.relative_to(
-                        self.projects_root
-                    )
-                )
-            except ValueError:
-                continue
-
-            relative_parts = relative_path.parts
-
-            if len(relative_parts) >= 2:
-                project_name = relative_parts[0]
-            else:
-                project_name = project_path.stem
-
-            grouped_projects.setdefault(
-                project_name,
-                [],
-            ).append(project_path)
-
-        sorted_groups = sorted(
-            grouped_projects.items(),
-            key=lambda entry: max(
-                path.stat().st_mtime
-                for path in entry[1]
-            ),
-            reverse=True,
-        )
-
-        for project_name, paths in sorted_groups:
-            project_item = QTreeWidgetItem(
-                [
-                    project_name,
-                    "",
-                ]
-            )
-
-            self.projects_tree.addTopLevelItem(
-                project_item
-            )
-
-            sorted_paths = sorted(
-                paths,
-                key=lambda path: path.stat().st_mtime,
-                reverse=True,
-            )
-
-            for project_path in sorted_paths:
-                modified_time = datetime.fromtimestamp(
-                    project_path.stat().st_mtime
-                ).strftime(
-                    "%Y-%m-%d %H:%M"
-                )
-
-                run_name = project_path.parent.name
-
-                run_item = QTreeWidgetItem(
-                    [
-                        run_name,
-                        modified_time,
-                    ]
-                )
-
-                run_item.setData(
-                    0,
-                    Qt.UserRole,
-                    str(project_path),
-                )
-
-                run_item.setToolTip(
-                    0,
-                    str(project_path),
-                )
-
-                project_item.addChild(
-                    run_item
-                )
-
-    def load_local_project(
-        self,
-        item,
-        column,
-    ):
-        project_path = item.data(
-            0,
-            Qt.UserRole,
-        )
-
-        if not project_path:
-            item.setExpanded(
-                not item.isExpanded()
-            )
-
-            return
-
-        if not os.path.isfile(project_path):
-            QMessageBox.warning(
-                self,
-                "Project unavailable",
-                (
-                    "The project file no longer exists:\n\n"
-                    f"{project_path}"
-                ),
-            )
-
-            self.refresh_project_list()
-
-            return
-
-        current_project = (
-            self.project.fileName()
-        )
-
-        if (
-            current_project
-            and os.path.normcase(current_project)
-            == os.path.normcase(project_path)
-        ):
-            return
-
-        self.load_project(
-            project_path
         )
 
     # ---------------------------------------------------------
@@ -389,6 +245,158 @@ class SitesDesktop(QMainWindow):
         self.addDockWidget(
             Qt.LeftDockWidgetArea,
             self.layer_dock,
+        )
+
+    # ---------------------------------------------------------
+    # Local projects panel
+    # ---------------------------------------------------------
+
+    def create_projects_panel(self):
+        self.projects_dock = QDockWidget(
+            "Projects",
+            self,
+        )
+
+        self.projects_dock.setObjectName(
+            "projects_dock"
+        )
+
+        self.projects_tree = QTreeWidget()
+
+        self.projects_tree.setHeaderLabels(
+            [
+                "Local projects",
+            ]
+        )
+
+        self.projects_tree.setAlternatingRowColors(
+            True
+        )
+
+        self.projects_tree.itemClicked.connect(
+            self.load_local_project
+        )
+
+        self.projects_dock.setWidget(
+            self.projects_tree
+        )
+
+        self.addDockWidget(
+            Qt.LeftDockWidgetArea,
+            self.projects_dock,
+        )
+
+        self.splitDockWidget(
+            self.projects_dock,
+            self.layer_dock,
+            Qt.Vertical,
+        )
+
+        self.refresh_project_list()
+
+    def refresh_project_list(self):
+        self.projects_tree.clear()
+
+        if not self.projects_root.is_dir():
+            unavailable_item = QTreeWidgetItem(
+                [
+                    "No local projects found",
+                ]
+            )
+
+            self.projects_tree.addTopLevelItem(
+                unavailable_item
+            )
+
+            return
+
+        project_directories = sorted(
+            (
+                path
+                for path in self.projects_root.iterdir()
+                if path.is_dir()
+            ),
+            key=lambda path: path.name.casefold(),
+        )
+
+        for project_directory in project_directories:
+            project_item = QTreeWidgetItem(
+                [
+                    project_directory.name,
+                ]
+            )
+
+            self.projects_tree.addTopLevelItem(
+                project_item
+            )
+
+            project_files = list(
+                project_directory.rglob(
+                    "*.qgz"
+                )
+            )
+
+            project_files.extend(
+                project_directory.rglob(
+                    "*.qgs"
+                )
+            )
+
+            project_files.sort(
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+
+            for project_path in project_files:
+                run_name = project_path.parent.name
+
+                run_item = QTreeWidgetItem(
+                    [
+                        run_name,
+                    ]
+                )
+
+                run_item.setToolTip(
+                    0,
+                    str(project_path),
+                )
+
+                run_item.setData(
+                    0,
+                    Qt.UserRole,
+                    str(project_path),
+                )
+
+                project_item.addChild(
+                    run_item
+                )
+
+        if self.projects_tree.topLevelItemCount() == 0:
+            unavailable_item = QTreeWidgetItem(
+                [
+                    "No local projects found",
+                ]
+            )
+
+            self.projects_tree.addTopLevelItem(
+                unavailable_item
+            )
+
+    def load_local_project(
+        self,
+        item,
+        column,
+    ):
+        project_path = item.data(
+            0,
+            Qt.UserRole,
+        )
+
+        if not project_path:
+            return
+
+        self.load_project(
+            project_path
         )
 
     # ---------------------------------------------------------

@@ -28,7 +28,7 @@ def create_site_summary(
     summary_settings=None,
 ):
     """
-    Create the initial text summary for the analysis site.
+    Create the initial Markdown report for the analysis site.
     """
 
     site_layer = QgsVectorLayer(
@@ -64,8 +64,11 @@ def create_site_summary(
         )
 
     report_lines = [
-        f"{readable_name}:",
-        f"Area: {total_area_ha:.2f} ha",
+        f"# Site analysis: {readable_name}",
+        "",
+        "## Site summary",
+        "",
+        f"- **Area:** {total_area_ha:.2f} ha",
     ]
 
     tariff_field = summary_settings.get(
@@ -110,13 +113,13 @@ def create_site_summary(
 
         for tariff_zone in tariff_zones:
             report_lines.append(
-                f"Tariff zone: "
+                f"- **Tariff zone:** "
                 f"{tariff_prefix}{tariff_zone}"
             )
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     with open(
@@ -156,7 +159,7 @@ def append_solar_resource_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     if not os.path.isfile(report_path):
@@ -262,7 +265,7 @@ def append_solar_position_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     if not os.path.isfile(report_path):
@@ -404,7 +407,7 @@ def append_meteorology_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     if not os.path.isfile(report_path):
@@ -598,7 +601,7 @@ def append_municipality_politics_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     if not os.path.isfile(report_path):
@@ -691,7 +694,7 @@ def append_bos_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     lines = [
@@ -779,7 +782,7 @@ def append_project_potential_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     lines = [
@@ -878,7 +881,7 @@ def append_grid_proximity_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     lines = [
@@ -1022,7 +1025,7 @@ def append_soil_depth_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     lines = [
@@ -1153,7 +1156,7 @@ def append_custom_estates_summary(
 
     report_path = os.path.join(
         folder_path,
-        f"prints ({folder_name}).txt",
+        "project_report.md",
     )
 
     lines = [

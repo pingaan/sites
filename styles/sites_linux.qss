@@ -1,0 +1,21 @@
+/* Ubuntu and other Linux desktops */
+
+QWidget {
+    font-family: "Ubuntu", "Noto Sans", "DejaVu Sans";
+    font-size: 10pt;
+}
+
+QPushButton:default {
+    background-color: #e95420;
+    border-color: #e95420;
+    color: #ffffff;
+}
+
+QTabBar::tab:selected {
+    color: #c34113;
+    border-bottom-color: #e95420;
+}
+
+QProgressBar::chunk {
+    background-color: #e95420;
+}

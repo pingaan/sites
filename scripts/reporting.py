@@ -21,6 +21,122 @@ def format_site_name(folder_name):
     )
 
 
+def render_markdown_lines(lines):
+    """
+    Convert report lines into consistently structured Markdown.
+
+    Existing underlined headings become level-two headings.
+    Named subsections become level-three headings.
+    Ordinary result lines become bullet points.
+    """
+
+    subsection_names = {
+        "Potential calculation assumptions",
+        "Average monthly snow depth:",
+        "Ruling parties:",
+    }
+
+    rendered_lines = []
+    index = 0
+
+    while index < len(lines):
+        line = str(
+            lines[index]
+        ).replace(
+            "\u00a0",
+            " ",
+        ).rstrip()
+
+        if not line:
+            rendered_lines.append("")
+            index += 1
+            continue
+
+        if index + 1 < len(lines):
+            next_line = str(
+                lines[index + 1]
+            ).strip()
+
+            if (
+                next_line
+                and set(next_line) == {"-"}
+            ):
+                rendered_lines.extend(
+                    [
+                        f"## {line}",
+                        "",
+                    ]
+                )
+
+                index += 2
+                continue
+
+        if line in subsection_names:
+            rendered_lines.extend(
+                [
+                    f"### {line.rstrip(':')}",
+                    "",
+                ]
+            )
+
+            index += 1
+            continue
+
+        if line.startswith("#"):
+            rendered_lines.append(
+                line
+            )
+
+            index += 1
+            continue
+
+        stripped_line = line.lstrip()
+
+        if stripped_line.startswith("- "):
+            rendered_lines.append(
+                stripped_line
+            )
+
+            index += 1
+            continue
+
+        if line.endswith(":"):
+            rendered_lines.extend(
+                [
+                    f"**{line[:-1]}**",
+                    "",
+                ]
+            )
+
+            index += 1
+            continue
+
+        rendered_lines.append(
+            f"- {line}"
+        )
+
+        index += 1
+
+    cleaned_lines = []
+
+    for line in rendered_lines:
+        if (
+            line == ""
+            and cleaned_lines
+            and cleaned_lines[-1] == ""
+        ):
+            continue
+
+        cleaned_lines.append(
+            line
+        )
+
+    return (
+        "\n".join(cleaned_lines).rstrip()
+        + "\n"
+    )
+
+
 def create_site_summary(
     site_layer_path,
     folder_path,
@@ -239,7 +355,7 @@ def append_solar_resource_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -320,7 +436,7 @@ def append_solar_position_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -580,7 +696,7 @@ def append_meteorology_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -672,7 +788,7 @@ def append_municipality_politics_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -761,7 +877,7 @@ def append_bos_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -859,7 +975,7 @@ def append_project_potential_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -1002,7 +1118,7 @@ def append_grid_proximity_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -1132,7 +1248,7 @@ def append_soil_depth_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(
@@ -1251,7 +1367,7 @@ def append_custom_estates_summary(
         encoding="utf-8",
     ) as report_file:
         report_file.write(
-            "\n".join(lines) + "\n"
+            render_markdown_lines(lines)
         )
 
     print(

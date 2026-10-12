@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import shutil
 
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
     QTextBrowser,
+    QAbstractItemView,
 )
 
 from qgis.core import (
@@ -273,8 +275,33 @@ class SitesDesktop(QMainWindow):
             True
         )
 
-        self.projects_tree.itemClicked.connect(
+        self.projects_tree.setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
+
+        self.projects_tree.itemDoubleClicked.connect(
             self.load_local_project
+        )
+
+        self.delete_projects_action = QAction(
+            "Delete selected local projects",
+            self.projects_tree,
+        )
+
+        self.delete_projects_action.setShortcut(
+            "Delete"
+        )
+
+        self.delete_projects_action.triggered.connect(
+            self.delete_selected_projects
+        )
+
+        self.projects_tree.addAction(
+            self.delete_projects_action
+        )
+
+        self.projects_tree.setContextMenuPolicy(
+            Qt.ActionsContextMenu
         )
 
         self.projects_dock.setWidget(
@@ -306,6 +333,12 @@ class SitesDesktop(QMainWindow):
 
             self.projects_tree.addTopLevelItem(
                 unavailable_item
+            )
+
+            project_item.setData(
+                0,
+                Qt.UserRole + 1,
+                str(project_directory),
             )
 
             return
@@ -367,6 +400,12 @@ class SitesDesktop(QMainWindow):
                     str(project_path),
                 )
 
+                run_item.setData(
+                    0,
+                    Qt.UserRole + 1,
+                    str(project_path.parent),
+                )
+
                 project_item.addChild(
                     run_item
                 )
@@ -397,6 +436,137 @@ class SitesDesktop(QMainWindow):
 
         self.load_project(
             project_path
+        )
+
+    def delete_selected_projects(self):
+        selected_items = (
+            self.projects_tree.selectedItems()
+        )
+
+        deletion_paths = []
+
+        for item in selected_items:
+            stored_path = item.data(
+                0,
+                Qt.UserRole + 1,
+            )
+
+            if not stored_path:
+                continue
+
+            deletion_paths.append(
+                Path(stored_path).resolve()
+            )
+
+        deletion_paths = sorted(
+            set(deletion_paths),
+            key=lambda path: len(path.parts),
+        )
+
+        filtered_paths = []
+
+        for candidate in deletion_paths:
+            if any(
+                parent == candidate
+                or parent in candidate.parents
+                for parent in filtered_paths
+            ):
+                continue
+
+            filtered_paths.append(
+                candidate
+            )
+
+        if not filtered_paths:
+            QMessageBox.information(
+                self,
+                "No projects selected",
+                (
+                    "Select one or more projects or "
+                    "analysis runs first."
+                ),
+            )
+            return
+
+        projects_root = (
+            self.projects_root.resolve()
+        )
+
+        safe_paths = []
+
+        for deletion_path in filtered_paths:
+            if (
+                deletion_path == projects_root
+                or projects_root
+                not in deletion_path.parents
+            ):
+                QMessageBox.critical(
+                    self,
+                    "Unsafe deletion prevented",
+                    (
+                        "Sites refused to delete a path "
+                        "outside the local Projects folder:\n\n"
+                        f"{deletion_path}"
+                    ),
+                )
+                return
+
+            safe_paths.append(
+                deletion_path
+            )
+
+        names = "\n".join(
+            f"• {path.name}"
+            for path in safe_paths
+        )
+
+        answer = QMessageBox.warning(
+            self,
+            "Delete local projects?",
+            (
+                "The following local project data will "
+                "be permanently deleted:\n\n"
+                f"{names}\n\n"
+                "This includes the project report, "
+                "GeoPackage and other local analysis "
+                "outputs.\n\n"
+                "Are you certain?"
+            ),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if answer != QMessageBox.Yes:
+            return
+
+        deletion_errors = []
+
+        for deletion_path in safe_paths:
+            try:
+                shutil.rmtree(
+                    deletion_path
+                )
+            except OSError as error:
+                deletion_errors.append(
+                    f"{deletion_path}\n{error}"
+                )
+
+        self.refresh_project_list()
+
+        if deletion_errors:
+            QMessageBox.critical(
+                self,
+                "Deletion incomplete",
+                (
+                    "Some selected projects could not "
+                    "be deleted:\n\n"
+                    + "\n\n".join(deletion_errors)
+                ),
+            )
+            return
+
+        self.status_message.setText(
+            "Selected local projects deleted"
         )
 
     # ---------------------------------------------------------
@@ -891,10 +1061,6 @@ class SitesDesktop(QMainWindow):
             self.select_custom_polygon
         )
 
-        self.projects_tree.itemClicked.connect(
-            self.load_local_project
-        )
-
         self.layer_tree.currentLayerChanged.connect(
             self.update_layer_information
         )
@@ -1334,9 +1500,99 @@ class SitesDesktop(QMainWindow):
             "Analysis completed"
         )
 
+        self.refresh_project_list()
+
     # ---------------------------------------------------------
     # Project handling
     # ---------------------------------------------------------
+
+    def load_project_report(
+        self,
+        project_path,
+    ):
+        project_directory = (
+            Path(project_path)
+            .resolve()
+            .parent
+        )
+
+        markdown_path = (
+            project_directory
+            / "project_report.md"
+        )
+
+        if markdown_path.is_file():
+            try:
+                report_text = (
+                    markdown_path.read_text(
+                        encoding="utf-8-sig"
+                    )
+                )
+            except OSError as error:
+                self.project_report_view.setMarkdown(
+                    "# Project information\n\n"
+                    "The project report could not "
+                    "be read.\n\n"
+                    f"`{error}`"
+                )
+                return
+
+            self.project_report_view.setMarkdown(
+                report_text
+            )
+
+            self.project_report_view.setToolTip(
+                str(markdown_path)
+            )
+
+            return
+
+        # Older projects used text reports.
+        legacy_reports = sorted(
+            project_directory.glob(
+                "prints (*.txt)"
+            ),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+
+        if legacy_reports:
+            legacy_path = legacy_reports[0]
+
+            try:
+                report_text = (
+                    legacy_path.read_text(
+                        encoding="utf-8-sig"
+                    )
+                )
+            except OSError as error:
+                self.project_report_view.setMarkdown(
+                    "# Project information\n\n"
+                    "The legacy project report could "
+                    "not be read.\n\n"
+                    f"`{error}`"
+                )
+                return
+
+            self.project_report_view.setPlainText(
+                report_text
+            )
+
+            self.project_report_view.setToolTip(
+                str(legacy_path)
+            )
+
+            return
+
+        self.project_report_view.setMarkdown(
+            "# Project information\n\n"
+            "No project report was found in:\n\n"
+            f"`{project_directory}`"
+        )
+
+        self.project_report_view.setToolTip(
+            str(project_directory)
+        )
 
     def open_project(self):
         project_path, _ = QFileDialog.getOpenFileName(
@@ -1372,6 +1628,10 @@ class SitesDesktop(QMainWindow):
         self.remove_embedded_basemaps()
         self.refresh_map_layers()
         self.zoom_full_extent()
+
+        self.load_project_report(
+            project_path
+        )
 
         self.status_message.setText(
             f"Project loaded: {os.path.basename(project_path)}"
@@ -1585,6 +1845,72 @@ class SitesDesktop(QMainWindow):
         )
 
 
+def load_application_stylesheet(
+    application,
+):
+    application_root = (
+        Path(__file__).resolve().parent
+    )
+
+    styles_directory = (
+        application_root
+        / "styles"
+    )
+
+    style_paths = [
+        styles_directory
+        / "sites_base.qss"
+    ]
+
+    if sys.platform.startswith("win"):
+        platform_style = (
+            styles_directory
+            / "sites_windows.qss"
+        )
+
+    elif sys.platform == "darwin":
+        platform_style = (
+            styles_directory
+            / "sites_macos.qss"
+        )
+
+    else:
+        platform_style = (
+            styles_directory
+            / "sites_linux.qss"
+        )
+
+    style_paths.append(
+        platform_style
+    )
+
+    stylesheet_parts = []
+
+    for style_path in style_paths:
+        if not style_path.is_file():
+            raise FileNotFoundError(
+                "Application stylesheet is missing: "
+                f"{style_path}"
+            )
+
+        stylesheet_parts.append(
+            style_path.read_text(
+                encoding="utf-8-sig"
+            )
+        )
+
+    application.setStyleSheet(
+        "\n\n".join(
+            stylesheet_parts
+        )
+    )
+
+    print(
+        "Application design loaded: "
+        f"{platform_style.name}"
+    )
+
+
 def main():
     prefix_path = os.environ.get(
         "QGIS_PREFIX_PATH"
@@ -1606,6 +1932,10 @@ def main():
     )
 
     app.initQgis()
+
+    load_application_stylesheet(
+        app
+    )
 
     window = SitesDesktop()
     window.showMaximized()

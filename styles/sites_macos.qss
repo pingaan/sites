@@ -1,0 +1,28 @@
+/* macOS */
+
+QWidget {
+    font-family: "SF Pro Text", "Helvetica Neue";
+    font-size: 13px;
+}
+
+QToolButton,
+QPushButton,
+QLineEdit,
+QComboBox {
+    border-radius: 7px;
+}
+
+QPushButton:default {
+    background-color: #0a84ff;
+    border-color: #0a84ff;
+    color: #ffffff;
+}
+
+QTabBar::tab:selected {
+    color: #006edc;
+    border-bottom-color: #0a84ff;
+}
+
+QProgressBar::chunk {
+    background-color: #0a84ff;
+}

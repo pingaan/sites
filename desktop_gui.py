@@ -36,19 +36,25 @@ from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
 )
 
+from qgis.gui import (
+    QgsLayerTreeView,
+    QgsMapCanvas,
+    QgsMapToolIdentifyFeature,
+    QgsMapToolPan,
+    QgsVertexMarker,
+)
+
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateTransform,
+    QgsGeometry,
     QgsLayerTreeModel,
     QgsMapLayerType,
     QgsProject,
     QgsRasterLayer,
+    QgsRectangle,
+    QgsVectorLayer,
     QgsWkbTypes,
-)
-
-from qgis.gui import (
-    QgsLayerTreeView,
-    QgsMapCanvas,
-    QgsMapToolPan,
 )
 
 from gui import SitesWindow as AnalysisWindow
@@ -111,6 +117,9 @@ class SitesDesktop(QMainWindow):
         )
         self.basemap_layer = None
         self.current_basemap_name = None
+        self.world_countries_layer = None
+        self.overview_satellite_layer = None
+        self.overview_project_marker = None
 
         self.setWindowTitle(
             "Sites — Renewable Energy Site Analysis"
@@ -216,6 +225,14 @@ class SitesDesktop(QMainWindow):
             self.map_canvas
         )
 
+        self.identify_tool = QgsMapToolIdentifyFeature(
+            self.map_canvas
+        )
+
+        self.map_canvas.setMapTool(
+            self.pan_tool
+        )
+
     # ---------------------------------------------------------
     # Layer panel
     # ---------------------------------------------------------
@@ -236,8 +253,22 @@ class SitesDesktop(QMainWindow):
             self.project.layerTreeRoot()
         )
 
+        self.layer_tree_model.setFlag(
+            QgsLayerTreeModel.AllowNodeChangeVisibility,
+            True,
+        )
+
+        self.layer_tree_model.setFlag(
+            QgsLayerTreeModel.AllowLegendChangeState,
+            True,
+        )
+
         self.layer_tree.setModel(
             self.layer_tree_model
+        )
+
+        self.project.layerTreeRoot().visibilityChanged.connect(
+            self.refresh_map_layers
         )
 
         self.layer_dock.setWidget(
@@ -755,6 +786,66 @@ class SitesDesktop(QMainWindow):
             self,
         )
 
+        # -------------------------------------------------
+        # Interactive map tools
+        # -------------------------------------------------
+
+        self.map_tool_action_group = QActionGroup(
+            self
+        )
+
+        self.map_tool_action_group.setExclusive(
+            True
+        )
+
+        self.pan_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionPan.svg"
+            ),
+            "Pan map",
+            self,
+        )
+
+        self.pan_action.setCheckable(
+            True
+        )
+
+        self.pan_action.setToolTip(
+            "Move around the map"
+        )
+
+        self.identify_feature_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionIdentify.svg"
+            ),
+            "Identify feature",
+            self,
+        )
+
+        self.identify_feature_action.setCheckable(
+            True
+        )
+
+        self.identify_feature_action.setToolTip(
+            "Click a feature in the selected layer"
+        )
+
+        self.identify_feature_action.setEnabled(
+            False
+        )
+
+        self.map_tool_action_group.addAction(
+            self.pan_action
+        )
+
+        self.map_tool_action_group.addAction(
+            self.identify_feature_action
+        )
+
+        self.pan_action.setChecked(
+            True
+        )
+
     # ---------------------------------------------------------
     # Menus
     # ---------------------------------------------------------
@@ -849,6 +940,16 @@ class SitesDesktop(QMainWindow):
 
         map_toolbar.addAction(
             self.open_project_action
+        )
+
+        map_toolbar.addSeparator()
+
+        map_toolbar.addAction(
+            self.pan_action
+        )
+
+        map_toolbar.addAction(
+            self.identify_feature_action
         )
 
         map_toolbar.addAction(
@@ -1065,6 +1166,22 @@ class SitesDesktop(QMainWindow):
             self.update_layer_information
         )
 
+        self.layer_tree.currentLayerChanged.connect(
+            self.update_identify_layer
+        )
+
+        self.pan_action.triggered.connect(
+            self.activate_pan_tool
+        )
+
+        self.identify_feature_action.triggered.connect(
+            self.activate_identify_tool
+        )
+
+        self.identify_tool.featureIdentified.connect(
+            self.handle_identified_feature
+        )
+
         self.map_canvas.xyCoordinates.connect(
             self.update_coordinates
         )
@@ -1137,10 +1254,126 @@ class SitesDesktop(QMainWindow):
     # Map navigation
     # ---------------------------------------------------------
 
-    def activate_pan_tool(self):
+    def activate_pan_tool(self, *args):
         self.map_canvas.setMapTool(
             self.pan_tool
         )
+
+        self.pan_action.setChecked(
+            True
+        )
+
+    def update_identify_layer(
+        self,
+        layer,
+    ):
+        """
+        Point the identify tool at the layer currently highlighted
+        in the Layers pane.
+        """
+
+        vector_layer_selected = (
+            layer is not None
+            and layer.isValid()
+            and layer.type()
+            == QgsMapLayerType.VectorLayer
+        )
+
+        self.identify_feature_action.setEnabled(
+            vector_layer_selected
+        )
+
+        if vector_layer_selected:
+            self.identify_tool.setLayer(
+                layer
+            )
+
+            return
+
+        if (
+            self.map_canvas.mapTool()
+            == self.identify_tool
+        ):
+            self.activate_pan_tool()
+
+    def activate_identify_tool(self, *args):
+        """
+        Activate feature identification for the layer highlighted
+        in the Layers pane.
+        """
+
+        layer = self.layer_tree.currentLayer()
+
+        if (
+            layer is None
+            or not layer.isValid()
+            or layer.type()
+            != QgsMapLayerType.VectorLayer
+        ):
+            QMessageBox.information(
+                self,
+                "Select a vector layer",
+                (
+                    "Select a vector layer in the Layers "
+                    "pane before using the identify tool."
+                ),
+            )
+
+            self.activate_pan_tool()
+            return
+
+        self.identify_tool.setLayer(
+            layer
+        )
+
+        self.map_canvas.setMapTool(
+            self.identify_tool
+        )
+
+        self.identify_feature_action.setChecked(
+            True
+        )
+
+    def handle_identified_feature(
+        self,
+        feature,
+    ):
+        """
+        Select an identified feature and display its attributes.
+        """
+
+        layer = self.layer_tree.currentLayer()
+
+        if (
+            layer is None
+            or not layer.isValid()
+            or layer.type()
+            != QgsMapLayerType.VectorLayer
+        ):
+            return
+
+        layer.selectByIds(
+            [
+                feature.id(),
+            ]
+        )
+
+        self.update_layer_information(
+            layer
+        )
+
+        feature_tab_index = (
+            self.information_tabs.indexOf(
+                self.feature_table
+            )
+        )
+
+        if feature_tab_index >= 0:
+            self.information_tabs.setCurrentIndex(
+                feature_tab_index
+            )
+
+        self.map_canvas.refresh()
 
     def zoom_full_extent(self):
         project_layers = self.visible_project_layers()
@@ -1240,7 +1473,7 @@ class SitesDesktop(QMainWindow):
             self.refresh_map_layers,
         )
 
-    def refresh_map_layers(self):
+    def refresh_map_layers(self, *args):
         project_layers = self.visible_project_layers()
 
         canvas_layers = list(
@@ -1625,6 +1858,27 @@ class SitesDesktop(QMainWindow):
 
             return
 
+        project_crs = self.project.crs()
+
+        if not project_crs.isValid():
+            QMessageBox.critical(
+                self,
+                "Project CRS error",
+                (
+                    "The loaded project does not have "
+                    "a valid coordinate reference system."
+                ),
+            )
+            return
+
+        self.map_canvas.setDestinationCrs(
+            project_crs
+        )
+
+        self.overview_canvas.setDestinationCrs(
+            project_crs
+        )
+
         self.remove_embedded_basemaps()
         self.refresh_map_layers()
         self.zoom_full_extent()
@@ -1777,40 +2031,311 @@ class SitesDesktop(QMainWindow):
                 ),
             )
 
-    def refresh_overview(self, *args):
-        project_layers = self.visible_project_layers()
-        layers = list(project_layers)
+    def initialize_overview_layers(self):
+        """
+        Create the private layers used by the country overview.
+
+        These layers are deliberately not added to QgsProject, so
+        they never appear in the Layers panel.
+        """
+
+        if self.world_countries_layer is None:
+            countries_path = (
+                Path(__file__).resolve().parent
+                / "assets"
+                / "world_countries.gpkg"
+            )
+
+            countries_uri = (
+                f"{countries_path}"
+                "|layername=world_countries"
+            )
+
+            self.world_countries_layer = QgsVectorLayer(
+                countries_uri,
+                "World countries",
+                "ogr",
+            )
+
+            if not self.world_countries_layer.isValid():
+                self.world_countries_layer = None
+
+                self.status_message.setText(
+                    "Country overview unavailable: "
+                    "world_countries.gpkg could not be loaded."
+                )
+
+                return False
+
+        if self.overview_satellite_layer is None:
+            self.overview_satellite_layer = QgsRasterLayer(
+                BASEMAPS["Google Satellite"],
+                "Country overview satellite",
+                "wms",
+            )
+
+            if not self.overview_satellite_layer.isValid():
+                self.overview_satellite_layer = None
+
+                self.status_message.setText(
+                    "Country overview unavailable: "
+                    "satellite imagery could not be loaded."
+                )
+
+                return False
+
+        if self.overview_project_marker is None:
+            self.overview_project_marker = QgsVertexMarker(
+                self.overview_canvas
+            )
+
+            self.overview_project_marker.setColor(
+                QColor("#e31b23")
+            )
+
+            self.overview_project_marker.setFillColor(
+                QColor("#e31b23")
+            )
+
+            self.overview_project_marker.setIconType(
+                QgsVertexMarker.ICON_CIRCLE
+            )
+
+            self.overview_project_marker.setIconSize(12)
+            self.overview_project_marker.setPenWidth(3)
+            self.overview_project_marker.hide()
+
+        return True
+
+    def project_layer_extent(
+        self,
+        layer,
+        project_crs,
+    ):
+        """
+        Return a layer extent transformed into the project CRS.
+        """
 
         if (
-            self.basemap_layer is not None
-            and self.basemap_layer.isValid()
+            layer is None
+            or not layer.isValid()
+            or not layer.crs().isValid()
         ):
-            layers.append(
-                self.basemap_layer
+            return None
+
+        layer_extent = layer.extent()
+
+        if layer_extent.isEmpty():
+            return None
+
+        if layer.crs() == project_crs:
+            return QgsRectangle(
+                layer_extent
             )
 
-        self.overview_canvas.setLayers(
-            layers
+        coordinate_transform = QgsCoordinateTransform(
+            layer.crs(),
+            project_crs,
+            self.project,
         )
 
-        if project_layers:
-            self.overview_canvas.setLayers(
-                project_layers
+        try:
+            return coordinate_transform.transformBoundingBox(
+                layer_extent
+            )
+        except Exception as error:
+            print(
+                "Could not transform overview extent for "
+                f"{layer.name()}: {error}"
             )
 
-            self.overview_canvas.zoomToFullExtent()
+            return None
 
-            extent = self.overview_canvas.extent()
+    def overview_project_extent(
+        self,
+        project_layers,
+        project_crs,
+    ):
+        """
+        Find the analysis-site extent, falling back to the combined
+        extent of all visible project layers.
+        """
 
-            self.overview_canvas.setLayers(
-                layers
+        preferred_names = (
+            "fastigheten",
+            "analysis site",
+            "project area",
+        )
+
+        for layer in project_layers:
+            layer_name = layer.name().strip().casefold()
+
+            if any(
+                preferred_name in layer_name
+                for preferred_name in preferred_names
+            ):
+                layer_extent = self.project_layer_extent(
+                    layer,
+                    project_crs,
+                )
+
+                if layer_extent is not None:
+                    return layer_extent
+
+        combined_extent = None
+
+        for layer in project_layers:
+            layer_extent = self.project_layer_extent(
+                layer,
+                project_crs,
             )
 
-            self.overview_canvas.setExtent(
-                extent
-            )
+            if layer_extent is None:
+                continue
 
+            if combined_extent is None:
+                combined_extent = QgsRectangle(
+                    layer_extent
+                )
+            else:
+                combined_extent.combineExtentWith(
+                    layer_extent
+                )
+
+        return combined_extent
+
+    def refresh_overview(self, *args):
+        project_layers = self.visible_project_layers()
+
+        if not project_layers:
+            if self.overview_project_marker is not None:
+                self.overview_project_marker.hide()
+
+            self.overview_canvas.setLayers([])
             self.overview_canvas.refresh()
+            return
+
+        if not self.initialize_overview_layers():
+            return
+
+        project_crs = self.project.crs()
+
+        if not project_crs.isValid():
+            return
+
+        project_extent = self.overview_project_extent(
+            project_layers=project_layers,
+            project_crs=project_crs,
+        )
+
+        if (
+            project_extent is None
+            or project_extent.isEmpty()
+        ):
+            self.overview_project_marker.hide()
+            return
+
+        project_center = project_extent.center()
+
+        to_country_crs = QgsCoordinateTransform(
+            project_crs,
+            self.world_countries_layer.crs(),
+            self.project,
+        )
+
+        try:
+            country_point = to_country_crs.transform(
+                project_center
+            )
+        except Exception as error:
+            print(
+                "Could not transform the project location "
+                f"for the country overview: {error}"
+            )
+
+            self.overview_project_marker.hide()
+            return
+
+        point_geometry = QgsGeometry.fromPointXY(
+            country_point
+        )
+
+        selected_country = None
+
+        for feature in (
+            self.world_countries_layer.getFeatures()
+        ):
+            geometry = feature.geometry()
+
+            if (
+                geometry is None
+                or geometry.isEmpty()
+            ):
+                continue
+
+            if geometry.intersects(point_geometry):
+                selected_country = feature
+                break
+
+        if selected_country is None:
+            self.status_message.setText(
+                "Country overview unavailable: "
+                "the project location did not match a country."
+            )
+
+            self.overview_project_marker.hide()
+            return
+
+        country_name = str(
+            selected_country["ADMIN"]
+        )
+
+        to_project_crs = QgsCoordinateTransform(
+            self.world_countries_layer.crs(),
+            project_crs,
+            self.project,
+        )
+
+        try:
+            country_extent = (
+                to_project_crs.transformBoundingBox(
+                    selected_country.geometry().boundingBox()
+                )
+            )
+        except Exception as error:
+            print(
+                "Could not transform the country extent "
+                f"for {country_name}: {error}"
+            )
+
+            self.overview_project_marker.hide()
+            return
+
+        country_extent.scale(
+            1.10
+        )
+
+        self.overview_canvas.setDestinationCrs(
+            project_crs
+        )
+
+        self.overview_canvas.setLayers(
+            [
+                self.overview_satellite_layer,
+            ]
+        )
+
+        self.overview_canvas.setExtent(
+            country_extent
+        )
+
+        self.overview_project_marker.setCenter(
+            project_center
+        )
+
+        self.overview_project_marker.show()
+
+        self.overview_canvas.refresh()
 
     # ---------------------------------------------------------
     # Status information
@@ -1938,7 +2463,7 @@ def main():
     )
 
     window = SitesDesktop()
-    window.showMaximized()
+    window.show()
 
     exit_code = app.exec_()
 

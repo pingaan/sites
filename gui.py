@@ -1,11 +1,14 @@
 import os
 import re
 import sys
+import shutil
 
+from pathlib import Path
 from qgis.PyQt.QtCore import (
-    Qt,
     QProcess,
     QProcessEnvironment,
+    Qt,
+    QTimer,
 )
 from qgis.PyQt.QtWidgets import (
     QApplication,
@@ -38,14 +41,16 @@ class SitesWindow(QMainWindow):
         self.process = None
         self.cancel_requested = False
         self.progress_output_buffer = ""
+        self.analysis_run_id = None
+        self.large_area_warning_shown = False
 
         self.setWindowTitle(
-            "Sites — Renewable Energy Site Analysis"
+            "Sovra — Analysis progress"
         )
 
         self.resize(
-            800,
-            340,
+            560,
+            170,
         )
 
         self.create_interface()
@@ -64,6 +69,15 @@ class SitesWindow(QMainWindow):
             central_widget
         )
 
+        main_layout.setContentsMargins(
+            20,
+            20,
+            20,
+            20,
+        )
+
+        main_layout.setSpacing(12)
+
         # -------------------------------------------------
         # Heading
         # -------------------------------------------------
@@ -81,8 +95,8 @@ class SitesWindow(QMainWindow):
             "Renewable energy site analysis"
         )
 
-        main_layout.addWidget(heading)
-        main_layout.addWidget(subtitle)
+        heading.setVisible(False)
+        subtitle.setVisible(False)
 
         # -------------------------------------------------
         # Analysis source
@@ -195,6 +209,8 @@ class SitesWindow(QMainWindow):
             polygon_widget,
         )
 
+        source_group.setVisible(False)
+
         main_layout.addWidget(
             source_group
         )
@@ -224,6 +240,8 @@ class SitesWindow(QMainWindow):
             42
         )
 
+        self.start_button.setVisible(False)
+
         self.cancel_button = QPushButton(
             "Cancel"
         )
@@ -252,7 +270,7 @@ class SitesWindow(QMainWindow):
         # -------------------------------------------------
 
         self.status_label = QLabel(
-            "Ready"
+            "Preparing analysis…"
         )
 
         self.status_label.setAlignment(
@@ -271,7 +289,26 @@ class SitesWindow(QMainWindow):
         )
 
         self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("Ready")
+
+        self.progress_bar.setFormat(
+            "%p%"
+        )
+
+        main_layout.addWidget(
+            self.progress_bar
+        )
+
+        self.progress_step_label = QLabel(
+            "Preparing analysis"
+        )
+
+        self.progress_step_label.setWordWrap(
+            True
+        )
+
+        main_layout.addWidget(
+            self.progress_step_label
+        )
 
         main_layout.addWidget(
             self.progress_bar
@@ -284,8 +321,14 @@ class SitesWindow(QMainWindow):
         self.details_button.setCheckable(True)
         self.details_button.setChecked(False)
 
+        button_layout.insertWidget(
+            0,
+            self.details_button,
+            1,
+        )
+
         main_layout.addWidget(
-            self.details_button
+            button_widget
         )
 
         self.log_output = QTextEdit()
@@ -409,8 +452,8 @@ class SitesWindow(QMainWindow):
             )
 
             self.resize(
-                max(self.width(), 800),
-                600,
+                720,
+                500,
             )
 
         else:
@@ -419,8 +462,8 @@ class SitesWindow(QMainWindow):
             )
 
             self.resize(
-                max(self.width(), 800),
-                340,
+                560,
+                170,
             )
 
     def start_analysis(self):
@@ -478,15 +521,23 @@ class SitesWindow(QMainWindow):
 
                 return
 
-            if not os.path.isfile(source_value):
+            polygon_file = source_value.split(
+                "|",
+                1,
+            )[0]
+
+            if not os.path.isfile(polygon_file):
                 QMessageBox.warning(
                     self,
                     "Polygon not found",
                     (
-                        "The selected polygon file "
-                        "does not exist."
+                        "The selected polygon source "
+                        "does not exist:\n\n"
+                        f"{polygon_file}"
                     ),
                 )
+
+                return
 
                 return
 
@@ -695,10 +746,10 @@ class SitesWindow(QMainWindow):
             )
 
         self.progress_bar.setFormat(
-            f"%p% — {message}"
+            "%p%"
         )
 
-        self.status_label.setText(
+        self.progress_step_label.setText(
             message
         )
 
@@ -745,6 +796,56 @@ class SitesWindow(QMainWindow):
         if not line:
             return
 
+        run_id_match = re.match(
+            r"Analysis run ID:\s*(\S+)",
+            line,
+        )
+
+        if run_id_match:
+            self.analysis_run_id = (
+                run_id_match.group(1)
+            )
+
+        large_area_match = re.match(
+            r"LARGE_ANALYSIS_AREA_WARNING:"
+            r"(\d+(?:\.\d+)?)",
+            line,
+        )
+
+        if (
+            large_area_match
+            and not self.large_area_warning_shown
+        ):
+            self.large_area_warning_shown = True
+
+            area_ha = float(
+                large_area_match.group(1)
+            )
+
+            self.progress_step_label.setText(
+                "Preparing a large analysis area"
+            )
+
+            QTimer.singleShot(
+                0,
+                lambda area=area_ha: (
+                    QMessageBox.warning(
+                        self,
+                        "Large analysis area",
+                        (
+                            "The selected project area is "
+                            f"{area:,.2f} hectares.\n\n"
+                            "Areas larger than 500 hectares "
+                            "can take several minutes to "
+                            "analyse, depending on the "
+                            "computer setup."
+                        ),
+                    )
+                ),
+            )
+
+            return
+
         neighbour_match = re.search(
             r"Neighbouring estate reprojected "
             r"\((\d+)/(\d+)\)",
@@ -761,17 +862,20 @@ class SitesWindow(QMainWindow):
             )
 
             percentage = (
-                18
+                22
                 + round(
                     current
                     / total
-                    * 10
+                    * 8
                 )
             )
 
             self.set_progress(
                 percentage,
-                "Preparing neighbouring estates",
+                (
+                    "Preparing neighbouring estates "
+                    f"({current} of {total})"
+                ),
             )
 
             return
@@ -802,7 +906,10 @@ class SitesWindow(QMainWindow):
 
             self.set_progress(
                 percentage,
-                "Downloading local constraint data",
+                (
+                    "Downloading local constraint data "
+                    f"({current} of {total})"
+                ),
             )
 
             return
@@ -811,122 +918,232 @@ class SitesWindow(QMainWindow):
             (
                 "Analysis run ID:",
                 2,
-                "Initialising analysis",
+                "Creating analysis workspace",
             ),
             (
                 "Country configuration loaded:",
                 4,
-                "Loading country configuration",
+                "Loading country-specific settings",
+            ),
+            (
+                "Starting solar site analysis...",
+                5,
+                "Starting the GIS analysis engine",
             ),
             (
                 "QGIS Processing is ready.",
                 6,
-                "Preparing GIS processing",
+                "GIS processing tools are ready",
             ),
             (
                 "Searching for estate:",
                 8,
-                "Finding estate",
+                "Searching the cadastral database",
             ),
             (
                 "PostGIS returned",
-                11,
+                10,
+                "Estate geometry found",
+            ),
+            (
+                "Estate downloaded from PostGIS:",
+                12,
                 "Downloading estate geometry",
             ),
             (
-                "Estate saved with area",
+                "Estate features merged:",
+                13,
+                "Merging estate parts",
+            ),
+            (
+                "Estate features dissolved:",
                 14,
-                "Preparing analysis site",
+                "Dissolving estate boundaries",
+            ),
+            (
+                "Estate converted to singleparts:",
+                15,
+                "Separating estate polygons",
+            ),
+            (
+                "Working CRS selected automatically:",
+                16,
+                "Selecting the local coordinate system",
+            ),
+            (
+                "Estate reprojected to",
+                17,
+                "Reprojecting the analysis site",
+            ),
+            (
+                "Estate saved with area",
+                18,
+                "Calculating the analysis-site area",
+            ),
+            (
+                "Estate buffer created (100m)",
+                19,
+                "Creating the local site buffer",
             ),
             (
                 "Estate buffer created (5km)",
-                17,
-                "Creating search area",
+                20,
+                "Creating the surrounding context area",
+            ),
+            (
+                "Red-listed species search context:",
+                20,
+                "Preparing the species-observation search",
+            ),
+            (
+                "Downloading red-listed observations",
+                21,
+                "Downloading red-listed species observations",
             ),
             (
                 "Red-listed species observations saved:",
-                20,
-                "Preparing environmental observations",
+                22,
+                "Saving nearby species observations",
             ),
             (
                 "Final neighbouring estates saved:",
-                28,
-                "Neighbouring estates completed",
+                30,
+                "Neighbouring-estate processing completed",
+            ),
+            (
+                "Requesting indexed DEM tiles",
+                31,
+                "Finding elevation tiles",
             ),
             (
                 "PostGIS DEM downloaded:",
-                32,
-                "Downloading terrain data",
+                33,
+                "Downloading elevation data",
             ),
             (
                 "DEM clipped",
                 35,
-                "Clipping terrain data",
+                "Clipping elevation data to the site",
             ),
             (
                 "Terrain grid created:",
-                38,
-                "Creating terrain grid",
+                37,
+                "Creating the terrain-processing grid",
+            ),
+            (
+                "DEM clipped to grid feature",
+                39,
+                "Dividing elevation data into terrain cells",
+            ),
+            (
+                "Slope and aspect calculated",
+                42,
+                "Calculating terrain slope and direction",
             ),
             (
                 "Total ineligible-terrain point layers:",
-                43,
-                "Analysing terrain eligibility",
+                44,
+                "Identifying unsuitable terrain",
             ),
             (
                 "Contour lines saved:",
                 46,
-                "Terrain analysis completed",
+                "Creating elevation contour lines",
             ),
             (
                 "Centroid representation created:",
                 70,
-                "Preparing local constraint layers",
+                "Preparing local constraint representations",
             ),
             (
                 "Site summary saved:",
-                74,
-                "Creating site summary",
+                73,
+                "Writing the site summary",
+            ),
+            (
+                "Soil-depth summary appended:",
+                75,
+                "Adding soil-depth results",
+            ),
+            (
+                "Project-potential summary appended:",
+                77,
+                "Calculating renewable-energy potential",
+            ),
+            (
+                "Grid-proximity summary appended:",
+                78,
+                "Calculating electrical-grid proximity",
+            ),
+            (
+                "Reading Global Solar Atlas data from PostGIS",
+                79,
+                "Reading solar-resource data",
             ),
             (
                 "Solar-resource summary appended:",
-                79,
-                "Solar-resource analysis completed",
+                81,
+                "Adding solar-resource results",
+            ),
+            (
+                "Solar-position summary appended:",
+                82,
+                "Calculating solar position",
+            ),
+            (
+                "Average wind speed at",
+                83,
+                "Calculating average wind speed",
             ),
             (
                 "Meteorological summary appended:",
-                85,
-                "Meteorological analysis completed",
+                86,
+                "Adding meteorological results",
             ),
             (
                 "Municipality political summary appended:",
-                87,
-                "Municipality analysis completed",
+                88,
+                "Adding municipality information",
             ),
             (
-                "BoS analysis",
+                "BoS analysis enabled",
                 89,
-                "Preparing balance-of-system analysis",
+                "Starting balance-of-system analysis",
+            ),
+            (
+                "PostGIS BoS land-cover raster downloaded:",
+                90,
+                "Downloading land-cover data",
+            ),
+            (
+                "BoS base land-cover prepared:",
+                91,
+                "Classifying land-cover areas",
+            ),
+            (
+                "BoS wetland coverage prepared:",
+                92,
+                "Calculating wetland coverage",
             ),
             (
                 "GeoPackage layer written:",
                 93,
-                "Packaging analysis results",
+                "Packaging analysis layers",
             ),
             (
                 "GeoPackage created:",
                 96,
-                "GeoPackage completed",
+                "Analysis package completed",
             ),
             (
                 "QGIS project saved:",
                 97,
-                "Saving QGIS project",
+                "Saving the QGIS project",
             ),
             (
                 "Analysis manifest",
                 98,
-                "Creating analysis manifest",
+                "Creating the analysis manifest",
             ),
         )
 
@@ -958,7 +1175,7 @@ class SitesWindow(QMainWindow):
         exit_status,
     ):
         """
-        Restore the interface when analysis ends.
+        Finalise the progress window when analysis ends.
         """
 
         self.read_process_output()
@@ -971,9 +1188,15 @@ class SitesWindow(QMainWindow):
             100,
         )
 
+        self.process = None
+
         if self.cancel_requested:
             self.status_label.setText(
                 "Analysis cancelled"
+            )
+
+            self.progress_step_label.setText(
+                "Removing incomplete analysis files"
             )
 
             self.log_output.append(
@@ -982,12 +1205,23 @@ class SitesWindow(QMainWindow):
 
             self.progress_bar.setValue(0)
             self.progress_bar.setFormat(
-                "Cancelled"
+                "%p%"
             )
 
-        elif exit_code == 0:
+            QTimer.singleShot(
+                500,
+                self.remove_cancelled_analysis,
+            )
+
+            return
+
+        if exit_code == 0:
             self.status_label.setText(
                 "Analysis completed successfully"
+            )
+
+            self.progress_step_label.setText(
+                "Opening the completed project"
             )
 
             self.log_output.append(
@@ -996,29 +1230,37 @@ class SitesWindow(QMainWindow):
 
             self.progress_bar.setValue(100)
             self.progress_bar.setFormat(
-                "Completed"
+                "%p%"
             )
 
-        else:
-            self.status_label.setText(
-                "Analysis failed"
+            QTimer.singleShot(
+                250,
+                self.close,
             )
 
-            self.log_output.append(
-                "\nAnalysis stopped with "
-                f"exit code {exit_code}."
-            )
+            return
 
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat(
-                "Failed"
-            )
+        self.status_label.setText(
+            "Analysis failed"
+        )
 
-            self.details_button.setChecked(
-                True
-            )
+        self.progress_step_label.setText(
+            f"Analysis stopped with exit code {exit_code}"
+        )
 
-        self.process = None
+        self.log_output.append(
+            "\nAnalysis stopped with "
+            f"exit code {exit_code}."
+        )
+
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat(
+            "%p%"
+        )
+
+        self.details_button.setChecked(
+            True
+        )
 
     def analysis_error(
         self,
@@ -1055,6 +1297,97 @@ class SitesWindow(QMainWindow):
             f"{process_error}"
         )
 
+    def remove_cancelled_analysis(
+        self,
+        attempts_remaining=6,
+    ):
+        """
+        Remove only the incomplete output folder belonging to
+        the analysis that was just cancelled.
+        """
+
+        if not self.analysis_run_id:
+            self.close()
+            return
+
+        local_app_data = os.environ.get(
+            "LOCALAPPDATA"
+        )
+
+        if not local_app_data:
+            self.close()
+            return
+
+        projects_root = (
+            Path(local_app_data)
+            / "Sites"
+            / "Projects"
+        )
+
+        if not projects_root.is_dir():
+            self.close()
+            return
+
+        run_folder = None
+
+        for project_folder in projects_root.iterdir():
+            if not project_folder.is_dir():
+                continue
+
+            candidate = (
+                project_folder
+                / self.analysis_run_id
+            )
+
+            if candidate.is_dir():
+                run_folder = candidate
+                break
+
+        if run_folder is None:
+            self.close()
+            return
+
+        try:
+            shutil.rmtree(
+                run_folder
+            )
+
+            project_folder = run_folder.parent
+
+            if (
+                project_folder != projects_root
+                and project_folder.is_dir()
+                and not any(project_folder.iterdir())
+            ):
+                project_folder.rmdir()
+
+        except OSError as error:
+            if attempts_remaining > 1:
+                QTimer.singleShot(
+                    500,
+                    lambda: (
+                        self.remove_cancelled_analysis(
+                            attempts_remaining - 1
+                        )
+                    ),
+                )
+
+                return
+
+            QMessageBox.warning(
+                self,
+                "Cleanup incomplete",
+                (
+                    "The analysis was cancelled, but its "
+                    "temporary output folder could not be "
+                    "removed:\n\n"
+                    f"{run_folder}\n\n"
+                    f"{error}"
+                ),
+            )
+
+        self.close()
+
     def cancel_analysis(self):
         """
         Stop the running analysis and its child processes.
@@ -1072,8 +1405,8 @@ class SitesWindow(QMainWindow):
             "Cancel analysis",
             (
                 "Stop the running analysis?\n\n"
-                "The current output folder may remain "
-                "in an incomplete state."
+                "Files created by this incomplete "
+                "analysis will be removed."
             ),
             QMessageBox.Yes
             | QMessageBox.No,
@@ -1091,6 +1424,10 @@ class SitesWindow(QMainWindow):
 
         self.status_label.setText(
             "Cancelling analysis…"
+        )
+
+        self.progress_step_label.setText(
+            "Stopping analysis processes"
         )
 
         QProcess.startDetached(

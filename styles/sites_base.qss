@@ -102,11 +102,6 @@ QDoubleSpinBox:focus {
     padding: 2px 7px;
 }
 
-QComboBox::drop-down {
-    border: none;
-    width: 25px;
-}
-
 QComboBox QAbstractItemView {
     background-color: #ffffff;
     border: 1px solid #c7ced8;

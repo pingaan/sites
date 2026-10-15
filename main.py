@@ -73,9 +73,11 @@ from scripts.solar_resource import (
     collect_solargis_resources,
     get_site_centroid_wgs84,
 )
-from qgis.core import (QgsApplication, 
+from qgis.core import (
+    QgsApplication, 
     Qgis, 
-    QgsProject
+    QgsProject,
+    QgsVectorLayer
 )
 from scripts.country_config import load_country_config
 from scripts.basemap_settings import BASEMAPS
@@ -262,12 +264,9 @@ def main():
                         analysis_layer_path=site_source[
                             "polygon"
                         ],
-                        estates_layer_path=paths[
-                            "estates_layer"
-                        ],
-                        csv_file=paths[
-                            "csv_file"
-                        ],
+                        estate_config=(
+                            country_config.ESTATE_CONFIG
+                        ),
                     )
                 )
 
@@ -372,6 +371,38 @@ def main():
             reprojected_layer_path=reprojected_layer_path,
             folder_path=site_data["folder_path"],
         )
+
+        site_area_layer = QgsVectorLayer(
+            site_layer_path,
+            "Analysis area check",
+            "ogr",
+        )
+
+        if not site_area_layer.isValid():
+            raise RuntimeError(
+                "Failed to load the analysis site "
+                "for its area check."
+            )
+
+        site_area_ha = sum(
+            feature.geometry().area()
+            for feature in site_area_layer.getFeatures()
+            if (
+                feature.geometry() is not None
+                and not feature.geometry().isEmpty()
+            )
+        ) / 10000
+
+        print(
+            f"Analysis site area: "
+            f"{site_area_ha:.2f} ha"
+        )
+
+        if site_area_ha > 500:
+            print(
+                "LARGE_ANALYSIS_AREA_WARNING:"
+                f"{site_area_ha:.2f}"
+            )
 
         buffer_paths = create_site_buffers(
             site_layer_path=site_layer_path,

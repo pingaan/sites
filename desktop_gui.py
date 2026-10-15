@@ -5,15 +5,29 @@ import shutil
 
 from datetime import datetime
 from pathlib import Path
+from qgis.PyQt.QtPrintSupport import (
+    QPrinter,
+    QPrintDialog,
+)
 from qgis.PyQt.QtCore import (
     Qt,
     QTimer,
+    QPointF,
+    QSizeF,
+    pyqtSignal,
+    QPointF,
+    QSizeF,
 )
-
 from qgis.PyQt.QtGui import (
     QColor,
+    QIcon,
+    QColor,
+    QCursor,
+    QTextDocument,
+    QPixmap,
+    QCursor,
+    QPainter,
 )
-
 from qgis.PyQt.QtWidgets import (
     QAction,
     QActionGroup,
@@ -34,18 +48,24 @@ from qgis.PyQt.QtWidgets import (
     QTreeWidgetItem,
     QTextBrowser,
     QAbstractItemView,
+    QInputDialog,
+    QSplashScreen,
+    QInputDialog,
 )
 
 from qgis.gui import (
     QgsLayerTreeView,
     QgsMapCanvas,
+    QgsMapCanvasAnnotationItem,
     QgsMapToolIdentifyFeature,
     QgsMapToolPan,
     QgsVertexMarker,
+    QgsMapTool,
+    QgsRubberBand,
 )
-
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsGeometry,
     QgsLayerTreeModel,
@@ -55,6 +75,16 @@ from qgis.core import (
     QgsRectangle,
     QgsVectorLayer,
     QgsWkbTypes,
+    Qgis,
+    QgsFillSymbol,
+    QgsProviderRegistry,
+    QgsSingleSymbolRenderer,
+    QgsFeature,
+    QgsVectorFileWriter,
+    QgsDistanceArea,
+    QgsPointXY,
+    QgsTextAnnotation,
+    QgsLayoutExporter,
 )
 
 from gui import SitesWindow as AnalysisWindow
@@ -93,6 +123,660 @@ BASEMAPS = {
     ),
 }
 
+COUNTRY_MAP_SETTINGS = {
+    "SE": {
+        "admin_name": "Sweden",
+        "crs": "EPSG:3006",
+    },
+    "FI": {
+        "admin_name": "Finland",
+        "crs": "EPSG:3067",
+    },
+}
+
+class DrawPolygonMapTool(QgsMapTool):
+    polygonCompleted = pyqtSignal(object)
+    polygonUpdated = pyqtSignal(object)
+    drawingCancelled = pyqtSignal()
+
+    def __init__(self, canvas):
+        super().__init__(canvas)
+
+        self.canvas = canvas
+        self.points = []
+
+        self.rubber_band = QgsRubberBand(
+            canvas,
+            QgsWkbTypes.PolygonGeometry,
+        )
+
+        self.rubber_band.setStrokeColor(
+            QColor(255, 110, 0, 255)
+        )
+
+        self.rubber_band.setFillColor(
+            QColor(255, 196, 0, 70)
+        )
+
+        self.rubber_band.setWidth(2)
+
+        self.setCursor(
+            QCursor(Qt.CrossCursor)
+        )
+
+    def start_drawing(self):
+        self.reset()
+
+    def canvasPressEvent(self, event):
+        point = event.mapPoint()
+
+        if event.button() == Qt.LeftButton:
+            self.points.append(
+                point
+            )
+
+            self.update_rubber_band()
+
+            geometry = self.build_geometry()
+
+            if geometry is not None:
+                self.polygonUpdated.emit(
+                    geometry
+                )
+
+            return
+
+        if event.button() != Qt.RightButton:
+            return
+
+        geometry = self.build_geometry()
+
+        if geometry is None:
+            return
+
+        self.reset()
+
+        self.polygonCompleted.emit(
+            geometry
+        )
+
+    def canvasMoveEvent(self, event):
+        """
+        Preview the polygon and its area while the cursor moves.
+        """
+
+        if not self.points:
+            return
+
+        preview_point = event.mapPoint()
+
+        self.update_rubber_band(
+            preview_point=preview_point
+        )
+
+        geometry = self.build_geometry(
+            preview_point=preview_point
+        )
+
+        if geometry is not None:
+            self.polygonUpdated.emit(
+                geometry
+            )
+
+    def build_geometry(
+        self,
+        preview_point=None,
+    ):
+        """
+        Build a temporary polygon from the fixed points and,
+        while moving the mouse, the current cursor position.
+        """
+
+        ring = list(
+            self.points
+        )
+
+        if preview_point is not None:
+            ring.append(
+                preview_point
+            )
+
+        if len(ring) < 3:
+            return None
+
+        ring.append(
+            ring[0]
+        )
+
+        geometry = QgsGeometry.fromPolygonXY(
+            [
+                ring,
+            ]
+        )
+
+        if geometry.isEmpty():
+            return None
+
+        return geometry
+
+    def update_rubber_band(
+        self,
+        preview_point=None,
+    ):
+        """
+        Redraw the orange polygon preview.
+        """
+
+        display_points = list(
+            self.points
+        )
+
+        if preview_point is not None:
+            display_points.append(
+                preview_point
+            )
+
+        self.rubber_band.reset(
+            QgsWkbTypes.PolygonGeometry
+        )
+
+        for index, point in enumerate(
+            display_points
+        ):
+            self.rubber_band.addPoint(
+                point,
+                index == len(display_points) - 1,
+            )
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.reset()
+
+            self.drawingCancelled.emit()
+
+            return
+
+        super().keyPressEvent(event)
+
+    def reset(self):
+        self.points = []
+
+        self.rubber_band.reset(
+            QgsWkbTypes.PolygonGeometry
+        )
+
+class MeasurementMapTool(QgsMapTool):
+    """
+    Interactive distance or area measurement tool.
+
+    Left-click adds vertices.
+    Right-click finishes the measurement.
+    Backspace removes the latest vertex.
+    Escape clears the measurement.
+    """
+
+    def __init__(
+        self,
+        canvas,
+        measurement_type,
+        message_callback,
+    ):
+        super().__init__(
+            canvas
+        )
+
+        if measurement_type not in {
+            "distance",
+            "area",
+        }:
+            raise ValueError(
+                "Measurement type must be "
+                "'distance' or 'area'."
+            )
+
+        self.canvas = canvas
+        self.measurement_type = measurement_type
+        self.message_callback = message_callback
+        self.points = []
+        self.finished = False
+
+        if measurement_type == "distance":
+            self.geometry_type = (
+                Qgis.GeometryType.Line
+            )
+        else:
+            self.geometry_type = (
+                Qgis.GeometryType.Polygon
+            )
+
+        self.rubber_band = QgsRubberBand(
+            self.canvas,
+            self.geometry_type,
+        )
+
+        self.rubber_band.setStrokeColor(
+            QColor(
+                220,
+                45,
+                45,
+                230,
+            )
+        )
+
+        self.rubber_band.setFillColor(
+            QColor(
+                220,
+                45,
+                45,
+                45,
+            )
+        )
+
+        self.rubber_band.setWidth(
+            2
+        )
+
+        # -------------------------------------------------
+        # Floating measurement label
+        # -------------------------------------------------
+
+        self.measurement_annotation = (
+            QgsTextAnnotation()
+        )
+
+        self.measurement_annotation.setFillSymbol(
+            QgsFillSymbol.createSimple(
+                {
+                    "color": "255,255,255,235",
+                    "outline_color": "220,45,45,255",
+                    "outline_width": "0.5",
+                }
+            )
+        )
+
+        self.measurement_annotation_item = (
+            QgsMapCanvasAnnotationItem(
+                self.measurement_annotation,
+                self.canvas,
+            )
+        )
+
+        self.measurement_annotation_item.hide()
+
+        self.setCursor(
+            QCursor(
+                Qt.CrossCursor
+            )
+        )
+
+    def activate(self):
+        super().activate()
+
+        if self.measurement_type == "distance":
+            message = (
+                "Measure distance: left-click to add "
+                "points; right-click to finish."
+            )
+        else:
+            message = (
+                "Measure area: left-click to add "
+                "corners; right-click to finish."
+            )
+
+        self.message_callback(
+            message
+        )
+
+    def deactivate(self):
+        self.clear_measurement(
+            show_instruction=False
+        )
+
+        super().deactivate()
+
+    def canvasPressEvent(
+        self,
+        event,
+    ):
+        if event.button() == Qt.LeftButton:
+            if self.finished:
+                self.clear_measurement(
+                    show_instruction=False
+                )
+
+            self.points.append(
+                QgsPointXY(
+                    event.mapPoint()
+                )
+            )
+
+            self.update_measurement()
+
+            return
+
+        if event.button() == Qt.RightButton:
+            minimum_points = (
+                2
+                if self.measurement_type
+                == "distance"
+                else 3
+            )
+
+            if len(self.points) < minimum_points:
+                return
+
+            self.finished = True
+
+            self.update_measurement(
+                final=True
+            )
+
+    def canvasMoveEvent(
+        self,
+        event,
+    ):
+        if (
+            not self.points
+            or self.finished
+        ):
+            return
+
+        cursor_point = QgsPointXY(
+            event.mapPoint()
+        )
+
+        self.update_measurement(
+            cursor_point=cursor_point,
+        )
+
+    def keyPressEvent(
+        self,
+        event,
+    ):
+        if event.key() == Qt.Key_Escape:
+            self.clear_measurement()
+
+            event.accept()
+            return
+
+        if (
+            event.key() == Qt.Key_Backspace
+            and self.points
+        ):
+            self.points.pop()
+            self.finished = False
+            self.update_measurement()
+
+            event.accept()
+            return
+
+        super().keyPressEvent(
+            event
+        )
+
+    def create_distance_calculator(self):
+        calculator = QgsDistanceArea()
+
+        calculator.setSourceCrs(
+            self.canvas
+            .mapSettings()
+            .destinationCrs(),
+            QgsProject
+            .instance()
+            .transformContext(),
+        )
+
+        project_ellipsoid = (
+            QgsProject
+            .instance()
+            .ellipsoid()
+        )
+
+        if (
+            not project_ellipsoid
+            or project_ellipsoid == "NONE"
+        ):
+            project_ellipsoid = "WGS84"
+
+        calculator.setEllipsoid(
+            project_ellipsoid
+        )
+
+        return calculator
+
+    def update_measurement_label(
+        self,
+        map_position,
+        measurement_text,
+    ):
+        """
+        Display a compact measurement label beside a map point.
+        """
+
+        if (
+            map_position is None
+            or not measurement_text
+        ):
+            self.measurement_annotation_item.hide()
+            return
+
+        map_crs = (
+            self.canvas
+            .mapSettings()
+            .destinationCrs()
+        )
+
+        self.measurement_annotation.setMapPositionCrs(
+            map_crs
+        )
+
+        self.measurement_annotation.setMapPosition(
+            map_position
+        )
+
+        document = (
+            self.measurement_annotation.document()
+        )
+
+        document.setHtml(
+            (
+                "<div style=\""
+                "font-family: 'Segoe UI';"
+                "font-size: 9pt;"
+                "font-weight: 600;"
+                "color: #17324d;"
+                "white-space: nowrap;"
+                "\">"
+                f"{measurement_text}"
+                "</div>"
+            )
+        )
+
+        document.adjustSize()
+
+        document_size = document.size()
+
+        frame_width = (
+            document_size.width() + 16
+        )
+
+        frame_height = (
+            document_size.height() + 10
+        )
+
+        self.measurement_annotation.setFrameSize(
+            QSizeF(
+                frame_width,
+                frame_height,
+            )
+        )
+
+        self.measurement_annotation.setFrameOffsetFromReferencePoint(
+            QPointF(
+                12,
+                -frame_height - 12,
+            )
+        )
+
+        self.measurement_annotation_item.show()
+        self.measurement_annotation_item.updatePosition()
+
+    def update_measurement(
+        self,
+        cursor_point=None,
+        final=False,
+    ):
+        display_points = list(
+            self.points
+        )
+
+        if cursor_point is not None:
+            display_points.append(
+                cursor_point
+            )
+
+        self.rubber_band.reset(
+            self.geometry_type
+        )
+
+        for index, point in enumerate(
+            display_points
+        ):
+            is_last_point = (
+                index
+                == len(display_points) - 1
+            )
+
+            self.rubber_band.addPoint(
+                point,
+                is_last_point,
+            )
+
+        if (
+            self.measurement_type == "area"
+            and len(display_points) >= 3
+        ):
+            self.rubber_band.closePoints(
+                True
+            )
+
+        calculator = (
+            self.create_distance_calculator()
+        )
+
+        prefix = (
+            "Final"
+            if final
+            else "Current"
+        )
+
+        if (
+            self.measurement_type == "distance"
+            and len(display_points) >= 2
+        ):
+            measured_length = (
+                calculator.measureLine(
+                    display_points
+                )
+            )
+
+            metres = (
+                calculator
+                .convertLengthMeasurement(
+                    measured_length,
+                    Qgis.DistanceUnit.Meters,
+                )
+            )
+
+            if metres >= 1000:
+                measurement_text = (
+                    f"{metres / 1000:.3f} km"
+                )
+            else:
+                measurement_text = (
+                    f"{metres:.2f} m"
+                )
+
+            self.message_callback(
+                f"{prefix} distance: "
+                f"{measurement_text}"
+            )
+
+            self.update_measurement_label(
+                map_position=display_points[-1],
+                measurement_text=measurement_text,
+            )
+
+        elif (
+            self.measurement_type == "area"
+            and len(display_points) >= 3
+        ):
+            measured_area = (
+                calculator.measurePolygon(
+                    display_points
+                )
+            )
+
+            square_metres = (
+                calculator
+                .convertAreaMeasurement(
+                    measured_area,
+                    Qgis.AreaUnit.SquareMeters,
+                )
+            )
+
+            hectares = (
+                square_metres / 10000
+            )
+
+            if hectares >= 0.01:
+                measurement_text = (
+                    f"{hectares:.3f} ha "
+                    f"({square_metres:,.1f} m²)"
+                )
+            else:
+                measurement_text = (
+                    f"{square_metres:.2f} m²"
+                )
+
+            self.message_callback(
+                f"{prefix} area: "
+                f"{measurement_text}"
+            )
+
+            self.update_measurement_label(
+                map_position=display_points[-1],
+                measurement_text=measurement_text,
+            )
+
+        self.canvas.refresh()
+
+    def clear_measurement(
+        self,
+        show_instruction=True,
+    ):
+        self.points = []
+        self.finished = False
+
+        self.rubber_band.reset(
+            self.geometry_type
+        )
+
+        self.measurement_annotation_item.hide()
+
+        self.canvas.refresh()
+
+        if not show_instruction:
+            return
+
+        if self.measurement_type == "distance":
+            self.message_callback(
+                "Measure distance: left-click to begin."
+            )
+        else:
+            self.message_callback(
+                "Measure area: left-click to begin."
+            )
 
 class SitesDesktop(QMainWindow):
     """
@@ -104,7 +788,13 @@ class SitesDesktop(QMainWindow):
 
         self.project = QgsProject.instance()
         self.analysis_window = None
+        self.analysis_project_snapshot = {}
         self.custom_polygon_path = None
+        self.custom_polygon_layer = None
+        self.drawn_polygon_path = None
+        self.drawn_polygon_layer = None
+        self.drawn_polygon_area_annotation = None
+        self.drawn_polygon_area_item = None
         local_app_data = os.environ.get(
             "LOCALAPPDATA",
             os.path.expanduser("~"),
@@ -120,6 +810,11 @@ class SitesDesktop(QMainWindow):
         self.world_countries_layer = None
         self.overview_satellite_layer = None
         self.overview_project_marker = None
+        self.default_map_crs = (
+            QgsCoordinateReferenceSystem(
+                "EPSG:3857"
+            )
+        )
 
         self.setWindowTitle(
             "Sites — Renewable Energy Site Analysis"
@@ -141,9 +836,9 @@ class SitesDesktop(QMainWindow):
         self.create_status_bar()
         self.connect_signals()
         self.arrange_panels()
-
         self.activate_pan_tool()
         self.set_basemap("OpenStreetMap")
+        self.focus_selected_country()
 
     # ---------------------------------------------------------
     # Main map
@@ -162,6 +857,9 @@ class SitesDesktop(QMainWindow):
 
         self.map_canvas.enableAntiAliasing(
             True
+        )
+        self.map_canvas.setDestinationCrs(
+            self.default_map_crs
         )
 
         # -------------------------------------------------
@@ -217,6 +915,10 @@ class SitesDesktop(QMainWindow):
             True
         )
 
+        self.overview_canvas.setDestinationCrs(
+            self.default_map_crs
+        )
+
         # -------------------------------------------------
         # Default mouse navigation
         # -------------------------------------------------
@@ -231,6 +933,16 @@ class SitesDesktop(QMainWindow):
 
         self.map_canvas.setMapTool(
             self.pan_tool
+        )
+
+        # -------------------------------------------------
+        # Draw polygon
+        # -------------------------------------------------
+
+        self.draw_polygon_tool = (
+            DrawPolygonMapTool(
+                self.map_canvas
+            )
         )
 
     # ---------------------------------------------------------
@@ -314,6 +1026,23 @@ class SitesDesktop(QMainWindow):
             self.load_local_project
         )
 
+        self.rename_project_action = QAction(
+            "Rename selected project or folder",
+            self.projects_tree,
+        )
+
+        self.rename_project_action.setShortcut(
+            "F2"
+        )
+
+        self.rename_project_action.triggered.connect(
+            self.rename_selected_project
+        )
+
+        self.projects_tree.addAction(
+            self.rename_project_action
+        )
+
         self.delete_projects_action = QAction(
             "Delete selected local projects",
             self.projects_tree,
@@ -352,6 +1081,32 @@ class SitesDesktop(QMainWindow):
 
         self.refresh_project_list()
 
+    def remove_empty_project_folders(self):
+        """
+        Remove empty directories underneath the local Projects
+        folder, working from the deepest directories upward.
+        """
+
+        if not self.projects_root.is_dir():
+            return
+
+        directories = sorted(
+            (
+                path
+                for path in self.projects_root.rglob("*")
+                if path.is_dir()
+            ),
+            key=lambda path: len(path.parts),
+            reverse=True,
+        )
+
+        for directory in directories:
+            try:
+                if not any(directory.iterdir()):
+                    directory.rmdir()
+            except OSError:
+                continue
+
     def refresh_project_list(self):
         self.projects_tree.clear()
 
@@ -366,13 +1121,9 @@ class SitesDesktop(QMainWindow):
                 unavailable_item
             )
 
-            project_item.setData(
-                0,
-                Qt.UserRole + 1,
-                str(project_directory),
-            )
-
             return
+
+        self.remove_empty_project_folders()
 
         project_directories = sorted(
             (
@@ -388,6 +1139,12 @@ class SitesDesktop(QMainWindow):
                 [
                     project_directory.name,
                 ]
+            )
+
+            project_item.setData(
+                0,
+                Qt.UserRole + 1,
+                str(project_directory),
             )
 
             self.projects_tree.addTopLevelItem(
@@ -467,6 +1224,186 @@ class SitesDesktop(QMainWindow):
 
         self.load_project(
             project_path
+        )
+
+    def rename_selected_project(self):
+        """
+        Rename one selected project folder or analysis-run folder.
+        """
+
+        selected_items = (
+            self.projects_tree.selectedItems()
+        )
+
+        if len(selected_items) != 1:
+            QMessageBox.information(
+                self,
+                "Select one item",
+                (
+                    "Select exactly one project or folder "
+                    "to rename."
+                ),
+            )
+            return
+
+        selected_item = selected_items[0]
+
+        stored_path = selected_item.data(
+            0,
+            Qt.UserRole + 1,
+        )
+
+        if not stored_path:
+            return
+
+        source_path = Path(
+            stored_path
+        ).resolve()
+
+        projects_root = (
+            self.projects_root.resolve()
+        )
+
+        if (
+            source_path == projects_root
+            or projects_root not in source_path.parents
+            or not source_path.is_dir()
+        ):
+            QMessageBox.critical(
+                self,
+                "Rename prevented",
+                (
+                    "Sovra refused to rename a path outside "
+                    "the local Projects folder."
+                ),
+            )
+            return
+
+        new_name, accepted = QInputDialog.getText(
+            self,
+            "Rename project",
+            "New name:",
+            text=source_path.name,
+        )
+
+        if not accepted:
+            return
+
+        new_name = new_name.strip()
+
+        if not new_name:
+            QMessageBox.warning(
+                self,
+                "Invalid name",
+                "The name cannot be empty.",
+            )
+            return
+
+        invalid_characters = set(
+            '<>:"/\\|?*'
+        )
+
+        reserved_names = {
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
+            *{
+                f"COM{number}"
+                for number in range(1, 10)
+            },
+            *{
+                f"LPT{number}"
+                for number in range(1, 10)
+            },
+        }
+
+        if (
+            any(
+                character in invalid_characters
+                for character in new_name
+            )
+            or new_name.endswith((" ", "."))
+            or new_name.upper() in reserved_names
+        ):
+            QMessageBox.warning(
+                self,
+                "Invalid name",
+                (
+                    "The name contains characters or a "
+                    "Windows-reserved name that cannot be "
+                    "used for a folder."
+                ),
+            )
+            return
+
+        target_path = (
+            source_path.parent
+            / new_name
+        )
+
+        if target_path == source_path:
+            return
+
+        if target_path.exists():
+            QMessageBox.warning(
+                self,
+                "Name already exists",
+                (
+                    "Another project or folder already "
+                    "uses that name."
+                ),
+            )
+            return
+
+        loaded_project_path = None
+        loaded_relative_path = None
+
+        if self.project.fileName():
+            loaded_project_path = Path(
+                self.project.fileName()
+            ).resolve()
+
+            try:
+                loaded_relative_path = (
+                    loaded_project_path.relative_to(
+                        source_path
+                    )
+                )
+            except ValueError:
+                loaded_relative_path = None
+
+        try:
+            source_path.rename(
+                target_path
+            )
+        except OSError as error:
+            QMessageBox.critical(
+                self,
+                "Rename failed",
+                (
+                    "The project folder could not be "
+                    "renamed:\n\n"
+                    f"{error}"
+                ),
+            )
+            return
+
+        self.refresh_project_list()
+
+        if loaded_relative_path is not None:
+            renamed_project_path = (
+                target_path
+                / loaded_relative_path
+            )
+
+            if renamed_project_path.is_file():
+                self.load_project(
+                    str(renamed_project_path)
+                )
+
+        self.status_message.setText(
+            f"Renamed to: {new_name}"
         )
 
     def delete_selected_projects(self):
@@ -719,6 +1656,26 @@ class SitesDesktop(QMainWindow):
             "Ctrl+S"
         )
 
+        self.print_project_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionFilePrint.svg"
+            ),
+            "Print project…",
+            self,
+        )
+
+        self.print_project_action.setShortcut(
+            "Ctrl+P"
+        )
+
+        self.print_project_action.setToolTip(
+            "Print a layout from the current project"
+        )
+
+        self.print_project_action.triggered.connect(
+            self.print_project
+        )
+
         self.exit_action = QAction(
             "Exit",
             self,
@@ -834,12 +1791,60 @@ class SitesDesktop(QMainWindow):
             False
         )
 
+        self.measure_distance_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionMeasure.svg"
+            ),
+            "Measure distance",
+            self,
+        )
+
+        self.measure_distance_action.setCheckable(
+            True
+        )
+
+        self.measure_distance_action.setToolTip(
+            "Measure a distance on the map"
+        )
+
+        self.measure_distance_action.triggered.connect(
+            self.activate_measure_distance_tool
+        )
+
+        self.measure_area_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionMeasureArea.svg"
+            ),
+            "Measure area",
+            self,
+        )
+
+        self.measure_area_action.setCheckable(
+            True
+        )
+
+        self.measure_area_action.setToolTip(
+            "Measure an area on the map"
+        )
+
+        self.measure_area_action.triggered.connect(
+            self.activate_measure_area_tool
+        )
+
         self.map_tool_action_group.addAction(
             self.pan_action
         )
 
         self.map_tool_action_group.addAction(
             self.identify_feature_action
+        )
+
+        self.map_tool_action_group.addAction(
+            self.measure_distance_action
+        )
+
+        self.map_tool_action_group.addAction(
+            self.measure_area_action
         )
 
         self.pan_action.setChecked(
@@ -945,6 +1950,16 @@ class SitesDesktop(QMainWindow):
         map_toolbar.addSeparator()
 
         map_toolbar.addAction(
+            self.measure_distance_action
+        )
+
+        map_toolbar.addAction(
+            self.measure_area_action
+        )
+
+        map_toolbar.addSeparator()
+
+        map_toolbar.addAction(
             self.pan_action
         )
 
@@ -954,6 +1969,10 @@ class SitesDesktop(QMainWindow):
 
         map_toolbar.addAction(
             self.save_project_action
+        )
+
+        map_toolbar.addAction(
+            self.print_project_action
         )
 
         map_toolbar.addSeparator()
@@ -1043,8 +2062,13 @@ class SitesDesktop(QMainWindow):
         )
 
         self.source_combo.addItem(
-            "Custom polygon",
+            "Predefined area",
             "custom_polygon",
+        )
+
+        self.source_combo.addItem(
+            "Draw polygon",
+            "draw_polygon",
         )
 
         analysis_toolbar.addWidget(
@@ -1154,12 +2178,28 @@ class SitesDesktop(QMainWindow):
             self.update_source_placeholder
         )
 
+        self.country_combo.currentIndexChanged.connect(
+            self.focus_selected_country
+        )
+
         self.source_combo.currentIndexChanged.connect(
             self.update_source_type
         )
 
         self.browse_button.clicked.connect(
             self.select_custom_polygon
+        )
+
+        self.draw_polygon_tool.polygonCompleted.connect(
+            self.finish_drawn_polygon
+        )
+
+        self.draw_polygon_tool.polygonUpdated.connect(
+            self.update_drawn_polygon_area_preview
+        )
+
+        self.draw_polygon_tool.drawingCancelled.connect(
+            self.cancel_polygon_drawing
         )
 
         self.layer_tree.currentLayerChanged.connect(
@@ -1334,6 +2374,58 @@ class SitesDesktop(QMainWindow):
             True
         )
 
+    def activate_measure_distance_tool(
+        self,
+        *args,
+    ):
+        if not hasattr(
+            self,
+            "measure_distance_tool",
+        ):
+            self.measure_distance_tool = (
+                MeasurementMapTool(
+                    canvas=self.map_canvas,
+                    measurement_type="distance",
+                    message_callback=(
+                        self.status_message.setText
+                    ),
+                )
+            )
+
+        self.map_canvas.setMapTool(
+            self.measure_distance_tool
+        )
+
+        self.measure_distance_action.setChecked(
+            True
+        )
+
+    def activate_measure_area_tool(
+        self,
+        *args,
+    ):
+        if not hasattr(
+            self,
+            "measure_area_tool",
+        ):
+            self.measure_area_tool = (
+                MeasurementMapTool(
+                    canvas=self.map_canvas,
+                    measurement_type="area",
+                    message_callback=(
+                        self.status_message.setText
+                    ),
+                )
+            )
+
+        self.map_canvas.setMapTool(
+            self.measure_area_tool
+        )
+
+        self.measure_area_action.setChecked(
+            True
+        )
+
     def handle_identified_feature(
         self,
         feature,
@@ -1480,6 +2572,41 @@ class SitesDesktop(QMainWindow):
             project_layers
         )
 
+        preview_layer = None
+
+        source_type = (
+            self.source_combo.currentData()
+        )
+
+        if self.drawn_polygon_area_annotation is not None:
+            self.drawn_polygon_area_annotation.setVisible(
+                source_type == "draw_polygon"
+            )
+
+        if self.drawn_polygon_area_item is not None:
+            self.drawn_polygon_area_item.setVisible(
+                source_type == "draw_polygon"
+            )
+
+        if source_type == "custom_polygon":
+            preview_layer = (
+                self.custom_polygon_layer
+            )
+
+        elif source_type == "draw_polygon":
+            preview_layer = (
+                self.drawn_polygon_layer
+            )
+
+        if (
+            preview_layer is not None
+            and preview_layer.isValid()
+        ):
+            canvas_layers.insert(
+                0,
+                preview_layer,
+            )
+
         if (
             self.basemap_layer is not None
             and self.basemap_layer.isValid()
@@ -1540,19 +2667,26 @@ class SitesDesktop(QMainWindow):
             self.source_combo.currentData()
         )
 
-        polygon_selected = (
+        polygon_file_selected = (
             source_type == "custom_polygon"
         )
 
+        draw_selected = (
+            source_type == "draw_polygon"
+        )
+
         self.browse_button.setEnabled(
-            polygon_selected
+            polygon_file_selected
         )
 
         self.source_input.setReadOnly(
-            polygon_selected
+            polygon_file_selected
+            or draw_selected
         )
 
-        if polygon_selected:
+        if polygon_file_selected:
+            self.activate_pan_tool()
+
             self.source_input.setPlaceholderText(
                 "Select a polygon file…"
             )
@@ -1561,28 +2695,806 @@ class SitesDesktop(QMainWindow):
                 self.source_input.setText(
                     self.custom_polygon_path
                 )
+            else:
+                self.source_input.clear()
+
+        elif draw_selected:
+            if self.drawn_polygon_path:
+                self.source_input.setText(
+                    self.drawn_polygon_path
+                )
+            else:
+                self.source_input.clear()
+
+            self.begin_polygon_drawing()
+
         else:
+            self.activate_pan_tool()
             self.source_input.clear()
             self.update_source_placeholder()
 
-    def select_custom_polygon(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select custom polygon",
-            os.path.expanduser("~"),
-            (
-                "Vector data "
-                "(*.gpkg *.shp *.geojson);;"
-                "All files (*.*)"
+        self.refresh_map_layers()
+
+    def update_drawn_polygon_area_preview(
+        self,
+        geometry,
+    ):
+        """
+        Update the hectare indicator during polygon drawing.
+        """
+
+        map_crs = (
+            self.map_canvas
+            .mapSettings()
+            .destinationCrs()
+        )
+
+        if (
+            geometry is None
+            or geometry.isEmpty()
+            or not map_crs.isValid()
+        ):
+            return
+
+        self.show_drawn_polygon_area_indicator(
+            geometry=geometry,
+            geometry_crs=map_crs,
+        )
+
+    def remove_drawn_polygon_area_indicator(self):
+        """
+        Remove the hectare indicator from the map canvas.
+        """
+
+        if self.drawn_polygon_area_annotation is not None:
+            self.drawn_polygon_area_annotation.setVisible(
+                False
+            )
+
+        if self.drawn_polygon_area_item is not None:
+            self.drawn_polygon_area_item.setVisible(
+                False
+            )
+
+            self.map_canvas.scene().removeItem(
+                self.drawn_polygon_area_item
+            )
+
+        self.drawn_polygon_area_item = None
+        self.drawn_polygon_area_annotation = None
+
+    def show_drawn_polygon_area_indicator(
+        self,
+        geometry,
+        geometry_crs,
+    ):
+        """
+        Create or update the polygon hectare indicator.
+        """
+
+        if geometry is None or geometry.isEmpty():
+            return
+
+        # ---------------------------------------------
+        # Calculate the area
+        # ---------------------------------------------
+
+        area_calculator = QgsDistanceArea()
+
+        area_calculator.setSourceCrs(
+            geometry_crs,
+            QgsProject.instance().transformContext(),
+        )
+
+        area_calculator.setEllipsoid(
+            "WGS84"
+        )
+
+        area_square_metres = (
+            area_calculator.measureArea(
+                geometry
+            )
+        )
+
+        area_hectares = (
+            area_square_metres / 10000.0
+        )
+
+        label_text = (
+            f"{area_hectares:.2f} ha"
+        )
+
+        # ---------------------------------------------
+        # Find the upper-right polygon vertex
+        # ---------------------------------------------
+
+        bounds = geometry.boundingBox()
+
+        target_corner = QgsPointXY(
+            bounds.xMaximum(),
+            bounds.yMaximum(),
+        )
+
+        vertices = [
+            QgsPointXY(
+                vertex.x(),
+                vertex.y(),
+            )
+            for vertex in geometry.vertices()
+        ]
+
+        if not vertices:
+            return
+
+        anchor_point = min(
+            vertices,
+            key=lambda vertex: (
+                (
+                    vertex.x()
+                    - target_corner.x()
+                )
+                ** 2
+                + (
+                    vertex.y()
+                    - target_corner.y()
+                )
+                ** 2
             ),
         )
 
-        if file_path:
-            self.custom_polygon_path = file_path
+        # ---------------------------------------------
+        # Prepare the text
+        # ---------------------------------------------
 
-            self.source_input.setText(
+        document = QTextDocument()
+
+        document.setDocumentMargin(
+            2.0
+        )
+
+        document.setHtml(
+            (
+                "<div style=\""
+                "font-family: Segoe UI, sans-serif;"
+                "font-size: 9pt;"
+                "font-weight: 600;"
+                "color: #172033;"
+                "white-space: nowrap;"
+                "\">"
+                f"{label_text}"
+                "</div>"
+            )
+        )
+
+        document.adjustSize()
+
+        # QTextDocument reports pixel dimensions.
+        # Convert these into the millimetres used by
+        # QgsTextAnnotation.
+        horizontal_dpi = max(
+            self.map_canvas.logicalDpiX(),
+            1,
+        )
+
+        vertical_dpi = max(
+            self.map_canvas.logicalDpiY(),
+            1,
+        )
+
+        frame_width_mm = (
+            document.idealWidth()
+            * 25.4
+            / horizontal_dpi
+            + 1.5
+        )
+
+        frame_height_mm = (
+            document.size().height()
+            * 25.4
+            / vertical_dpi
+            + 1.0
+        )
+
+        # ---------------------------------------------
+        # Create or update the annotation
+        # ---------------------------------------------
+
+        annotation = (
+            self.drawn_polygon_area_annotation
+        )
+
+        if annotation is None:
+            annotation = QgsTextAnnotation()
+
+            frame_symbol = (
+                QgsFillSymbol.createSimple(
+                    {
+                        "color": "255,255,255,235",
+                        "outline_color": (
+                            "255,110,0,255"
+                        ),
+                        "outline_width": "0.4",
+                    }
+                )
+            )
+
+            annotation.setFillSymbol(
+                frame_symbol
+            )
+
+            self.drawn_polygon_area_annotation = (
+                annotation
+            )
+
+        annotation.setDocument(
+            document
+        )
+
+        annotation.setMapPosition(
+            anchor_point
+        )
+
+        annotation.setMapPositionCrs(
+            geometry_crs
+        )
+
+        annotation.setHasFixedMapPosition(
+            True
+        )
+
+        annotation.setFrameSizeMm(
+            QSizeF(
+                frame_width_mm,
+                frame_height_mm,
+            )
+        )
+
+        annotation.setFrameOffsetFromReferencePointMm(
+            QPointF(
+                3.0,
+                -frame_height_mm - 3.0,
+            )
+        )
+
+        annotation.setVisible(
+            True
+        )
+
+        # Only create the canvas item once. During drawing,
+        # the existing item is simply updated.
+        if self.drawn_polygon_area_item is None:
+            self.drawn_polygon_area_item = (
+                QgsMapCanvasAnnotationItem(
+                    annotation,
+                    self.map_canvas,
+                )
+            )
+
+        self.drawn_polygon_area_item.setVisible(
+            True
+        )
+
+        self.drawn_polygon_area_item.update()
+        self.map_canvas.refresh()
+
+    def begin_polygon_drawing(self):
+        self.remove_drawn_polygon_area_indicator()
+
+        self.central_tabs.setCurrentIndex(0)
+
+        self.draw_polygon_tool.start_drawing()
+
+        self.map_canvas.setMapTool(
+            self.draw_polygon_tool
+        )
+
+        self.status_message.setText(
+            "Draw the analysis polygon: "
+            "left-click to add points, "
+            "right-click to finish, "
+            "or press Escape to cancel."
+        )
+
+    def cancel_polygon_drawing(self):
+        self.remove_drawn_polygon_area_indicator()
+
+        self.activate_pan_tool()
+
+        self.status_message.setText(
+            "Polygon drawing cancelled."
+        )
+
+    def finish_drawn_polygon(self, geometry):
+        if geometry is None or geometry.isEmpty():
+            QMessageBox.warning(
+                self,
+                "Invalid polygon",
+                "The drawn polygon contains no geometry.",
+            )
+            return
+
+        if not geometry.isGeosValid():
+            QMessageBox.warning(
+                self,
+                "Invalid polygon",
+                (
+                    "The drawn polygon is not geometrically "
+                    "valid. Check that its edges do not "
+                    "cross and draw it again."
+                ),
+            )
+
+            self.begin_polygon_drawing()
+            return
+
+        map_crs = (
+            self.map_canvas
+            .mapSettings()
+            .destinationCrs()
+        )
+
+        if not map_crs.isValid():
+            QMessageBox.warning(
+                self,
+                "Invalid map CRS",
+                (
+                    "The map does not have a valid "
+                    "coordinate reference system."
+                ),
+            )
+            return
+
+        memory_layer = QgsVectorLayer(
+            (
+                "Polygon?crs="
+                f"{map_crs.authid()}"
+            ),
+            "Drawn analysis polygon",
+            "memory",
+        )
+
+        feature = QgsFeature()
+        feature.setGeometry(geometry)
+
+        provider = memory_layer.dataProvider()
+
+        if not provider.addFeature(feature):
+            QMessageBox.critical(
+                self,
+                "Polygon error",
+                (
+                    "The drawn polygon could not be "
+                    "added to the temporary layer."
+                ),
+            )
+            return
+
+        memory_layer.updateExtents()
+
+        temporary_root = (
+            Path(
+                os.environ.get(
+                    "LOCALAPPDATA",
+                    str(Path.home()),
+                )
+            )
+            / "Sites"
+            / "Temporary"
+        )
+
+        temporary_root.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        timestamp = datetime.now().strftime(
+            "%Y%m%d-%H%M%S-%f"
+        )
+
+        output_path = (
+            temporary_root
+            / (
+                "drawn_analysis_polygon_"
+                f"{timestamp}.gpkg"
+            )
+        )
+
+        options = (
+            QgsVectorFileWriter
+            .SaveVectorOptions()
+        )
+
+        options.driverName = "GPKG"
+        options.layerName = "analysis_polygon"
+
+        options.actionOnExistingFile = (
+            QgsVectorFileWriter
+            .CreateOrOverwriteFile
+        )
+
+        writer_result = (
+            QgsVectorFileWriter
+            .writeAsVectorFormatV3(
+                memory_layer,
+                str(output_path),
+                (
+                    QgsProject.instance()
+                    .transformContext()
+                ),
+                options,
+            )
+        )
+
+        if (
+            writer_result[0]
+            != QgsVectorFileWriter.NoError
+        ):
+            QMessageBox.critical(
+                self,
+                "Polygon save error",
+                (
+                    "The drawn polygon could not be "
+                    "saved:\n\n"
+                    f"{writer_result[1]}"
+                ),
+            )
+            return
+
+        polygon_uri = (
+            f"{output_path}"
+            "|layername=analysis_polygon"
+        )
+
+        preview_layer = QgsVectorLayer(
+            polygon_uri,
+            "Drawn analysis polygon",
+            "ogr",
+        )
+
+        if not preview_layer.isValid():
+            QMessageBox.critical(
+                self,
+                "Polygon preview error",
+                (
+                    "The saved polygon could not be "
+                    "loaded back into QGIS."
+                ),
+            )
+            return
+
+        preview_symbol = QgsFillSymbol.createSimple(
+            {
+                "color": "255,196,0,70",
+                "outline_color": "255,110,0,255",
+                "outline_width": "1.2",
+            }
+        )
+
+        preview_layer.setRenderer(
+            QgsSingleSymbolRenderer(
+                preview_symbol
+            )
+        )
+
+        self.drawn_polygon_path = polygon_uri
+        self.drawn_polygon_layer = preview_layer
+
+        self.show_drawn_polygon_area_indicator(
+            geometry=geometry,
+            geometry_crs=map_crs,
+        )
+
+        self.source_input.setText(
+            polygon_uri
+        )
+
+        self.source_input.setToolTip(
+            polygon_uri
+        )
+
+        self.activate_pan_tool()
+        self.refresh_map_layers()
+
+        preview_extent = self.project_layer_extent(
+            preview_layer,
+            (
+                self.map_canvas
+                .mapSettings()
+                .destinationCrs()
+            ),
+        )
+
+        if (
+            preview_extent is not None
+            and not preview_extent.isEmpty()
+        ):
+            preview_extent.scale(1.25)
+
+            self.map_canvas.setExtent(
+                preview_extent
+            )
+
+        self.map_canvas.refresh()
+
+        self.status_message.setText(
+            "Drawn analysis polygon is ready."
+        )
+
+    def select_custom_polygon(self):
+        registry = QgsProviderRegistry.instance()
+
+        file_filters = registry.fileVectorFilters()
+
+        if "All files" not in file_filters:
+            file_filters += ";;All files (*.*)"
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select analysis polygon",
+            os.path.expanduser("~"),
+            file_filters,
+        )
+
+        if not file_path:
+            return
+
+        polygon_candidates = []
+
+        try:
+            sublayers = registry.querySublayers(
                 file_path
             )
+        except Exception as error:
+            QMessageBox.warning(
+                self,
+                "Unable to inspect data source",
+                (
+                    "QGIS could not inspect the selected "
+                    "data source:\n\n"
+                    f"{file_path}\n\n"
+                    f"{error}"
+                ),
+            )
+            return
+
+        for details in sublayers:
+            if details.type() != Qgis.LayerType.Vector:
+                continue
+
+            candidate = QgsVectorLayer(
+                details.uri(),
+                details.name(),
+                details.providerKey(),
+            )
+
+            if not candidate.isValid():
+                continue
+
+            if (
+                candidate.geometryType()
+                != QgsWkbTypes.PolygonGeometry
+            ):
+                continue
+
+            polygon_candidates.append(
+                {
+                    "details": details,
+                    "layer": candidate,
+                }
+            )
+
+        # Some simple formats may not report sublayers.
+        if not polygon_candidates:
+            candidate = QgsVectorLayer(
+                file_path,
+                Path(file_path).stem,
+                "ogr",
+            )
+
+            if (
+                candidate.isValid()
+                and candidate.geometryType()
+                == QgsWkbTypes.PolygonGeometry
+            ):
+                polygon_candidates.append(
+                    {
+                        "details": None,
+                        "layer": candidate,
+                    }
+                )
+
+        if not polygon_candidates:
+            QMessageBox.warning(
+                self,
+                "Polygon layer required",
+                (
+                    "The selected data source does not "
+                    "contain a readable polygon layer.\n\n"
+                    "The analysis area must be supplied as "
+                    "polygon or multipolygon vector data."
+                ),
+            )
+            return
+
+        selected_candidate = polygon_candidates[0]
+
+        if len(polygon_candidates) > 1:
+            candidate_names = [
+                candidate["layer"].name()
+                for candidate in polygon_candidates
+            ]
+
+            selected_name, accepted = (
+                QInputDialog.getItem(
+                    self,
+                    "Select polygon layer",
+                    (
+                        "This data source contains more "
+                        "than one polygon layer:"
+                    ),
+                    candidate_names,
+                    0,
+                    False,
+                )
+            )
+
+            if not accepted:
+                return
+
+            selected_index = (
+                candidate_names.index(
+                    selected_name
+                )
+            )
+
+            selected_candidate = (
+                polygon_candidates[selected_index]
+            )
+
+        preview_layer = selected_candidate["layer"]
+        details = selected_candidate["details"]
+
+        if details is None:
+            polygon_uri = file_path
+        else:
+            polygon_uri = details.uri()
+
+        preview_layer.setName(
+            "Analysis polygon preview"
+        )
+
+        preview_symbol = QgsFillSymbol.createSimple(
+            {
+                "color": "255,196,0,70",
+                "outline_color": "255,110,0,255",
+                "outline_width": "1.2",
+            }
+        )
+
+        preview_layer.setRenderer(
+            QgsSingleSymbolRenderer(
+                preview_symbol
+            )
+        )
+
+        self.custom_polygon_path = polygon_uri
+        self.custom_polygon_layer = preview_layer
+
+        self.source_input.setText(
+            polygon_uri
+        )
+
+        self.source_input.setToolTip(
+            polygon_uri
+        )
+
+        self.refresh_map_layers()
+
+        preview_extent = self.project_layer_extent(
+            preview_layer,
+            self.map_canvas.mapSettings()
+            .destinationCrs(),
+        )
+
+        if (
+            preview_extent is not None
+            and not preview_extent.isEmpty()
+        ):
+            preview_extent.scale(1.25)
+
+            self.map_canvas.setExtent(
+                preview_extent
+            )
+
+            self.map_canvas.refresh()
+
+        self.status_message.setText(
+            "Analysis polygon loaded and previewed."
+        )
+
+    def local_project_files(self):
+        if not self.projects_root.is_dir():
+            return []
+
+        return [
+            path
+            for path in self.projects_root.rglob("*")
+            if (
+                path.is_file()
+                and path.suffix.lower()
+                in {".qgz", ".qgs"}
+            )
+        ]
+
+    def create_local_project_snapshot(self):
+        snapshot = {}
+
+        for project_path in self.local_project_files():
+            try:
+                snapshot[str(project_path.resolve())] = (
+                    project_path.stat().st_mtime_ns
+                )
+            except OSError:
+                continue
+
+        return snapshot
+
+    def find_completed_analysis_project(self):
+        changed_projects = []
+
+        for project_path in self.local_project_files():
+            try:
+                resolved_path = str(
+                    project_path.resolve()
+                )
+
+                modified_time = (
+                    project_path.stat().st_mtime_ns
+                )
+            except OSError:
+                continue
+
+            previous_modified_time = (
+                self.analysis_project_snapshot.get(
+                    resolved_path
+                )
+            )
+
+            if (
+                previous_modified_time is None
+                or modified_time
+                > previous_modified_time
+            ):
+                changed_projects.append(
+                    project_path
+                )
+
+        if not changed_projects:
+            return None
+
+        return max(
+            changed_projects,
+            key=lambda path: (
+                path.stat().st_mtime_ns
+            ),
+        )
+
+    def clear_drawn_polygon_preview(self):
+        self.remove_drawn_polygon_area_indicator()
+        self.draw_polygon_tool.reset()
+
+        self.drawn_polygon_layer = None
+        self.drawn_polygon_path = None
+
+        if (
+            self.source_combo.currentData()
+            == "draw_polygon"
+        ):
+            self.source_input.clear()
+            self.source_input.setToolTip("")
+
+        self.activate_pan_tool()
+        self.refresh_map_layers()
 
     def start_analysis(self):
         country_code = (
@@ -1609,17 +3521,27 @@ class SitesDesktop(QMainWindow):
 
             return
 
-        if (
-            source_type == "custom_polygon"
-            and not os.path.isfile(source_value)
-        ):
-            QMessageBox.warning(
-                self,
-                "Polygon not found",
-                "The selected polygon file does not exist.",
-            )
+        if source_type in {
+            "custom_polygon",
+            "draw_polygon",
+        }:
+            source_file = source_value.split(
+                "|",
+                1,
+            )[0]
 
-            return
+            if not os.path.isfile(source_file):
+                QMessageBox.warning(
+                    self,
+                    "Polygon not found",
+                    (
+                        "The selected polygon source "
+                        "does not exist:\n\n"
+                        f"{source_file}"
+                    ),
+                )
+
+                return
 
         if (
             self.analysis_window is not None
@@ -1629,6 +3551,10 @@ class SitesDesktop(QMainWindow):
             self.analysis_window.activateWindow()
 
             return
+
+        self.analysis_project_snapshot = (
+            self.create_local_project_snapshot()
+        )
 
         self.analysis_window = AnalysisWindow()
 
@@ -1729,11 +3655,37 @@ class SitesDesktop(QMainWindow):
 
             return
 
-        self.status_message.setText(
-            "Analysis completed"
+        completed_project = (
+            self.find_completed_analysis_project()
         )
 
+        self.clear_drawn_polygon_preview()
         self.refresh_project_list()
+
+        if completed_project is None:
+            self.status_message.setText(
+                (
+                    "Analysis completed, but the new "
+                    "QGIS project could not be located."
+                )
+            )
+
+            return
+
+        self.load_project(
+            str(completed_project)
+        )
+
+        if self.analysis_window is not None:
+            self.analysis_window.hide()
+
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+        self.status_message.setText(
+            "Analysis completed and project loaded"
+        )
 
     # ---------------------------------------------------------
     # Project handling
@@ -1891,6 +3843,138 @@ class SitesDesktop(QMainWindow):
             f"Project loaded: {os.path.basename(project_path)}"
         )
 
+    def print_project(self):
+        """
+        Print one layout from the currently loaded QGIS project.
+        """
+
+        if not self.project.fileName():
+            QMessageBox.information(
+                self,
+                "No project loaded",
+                "Load a project before printing.",
+            )
+            return
+
+        layouts = (
+            self.project
+            .layoutManager()
+            .printLayouts()
+        )
+
+        if not layouts:
+            QMessageBox.information(
+                self,
+                "No print layout",
+                (
+                    "The current project does not contain "
+                    "a print layout yet.\n\n"
+                    "A Sovra print-layout template will "
+                    "need to be created and added to the "
+                    "generated project."
+                ),
+            )
+            return
+
+        if len(layouts) == 1:
+            selected_layout = layouts[0]
+
+        else:
+            layout_names = [
+                layout.name()
+                for layout in layouts
+            ]
+
+            selected_name, accepted = (
+                QInputDialog.getItem(
+                    self,
+                    "Select print layout",
+                    "Layout:",
+                    layout_names,
+                    0,
+                    False,
+                )
+            )
+
+            if not accepted:
+                return
+
+            selected_layout = next(
+                layout
+                for layout in layouts
+                if layout.name() == selected_name
+            )
+
+        printer = QPrinter(
+            QPrinter.HighResolution
+        )
+
+        printer.setDocName(
+            selected_layout.name()
+        )
+
+        printer.setFullPage(
+            True
+        )
+
+        print_dialog = QPrintDialog(
+            printer,
+            self,
+        )
+
+        print_dialog.setWindowTitle(
+            "Print Sovra project"
+        )
+
+        if not print_dialog.exec_():
+            return
+
+        painter = QPainter()
+
+        if not painter.begin(printer):
+            QMessageBox.critical(
+                self,
+                "Printing failed",
+                "The selected printer could not be opened.",
+            )
+            return
+
+        exporter = QgsLayoutExporter(
+            selected_layout
+        )
+
+        page_count = (
+            selected_layout
+            .pageCollection()
+            .pageCount()
+        )
+
+        try:
+            for page_number in range(page_count):
+                if (
+                    page_number > 0
+                    and not printer.newPage()
+                ):
+                    raise RuntimeError(
+                        "The printer could not create "
+                        "another page."
+                    )
+
+                exporter.renderPage(
+                    painter,
+                    page_number,
+                )
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "Printing failed",
+                str(error),
+            )
+
+        finally:
+            painter.end()
+
     def save_project(self):
         project_path = (
             self.project.fileName()
@@ -2030,6 +4114,247 @@ class SitesDesktop(QMainWindow):
                     )
                 ),
             )
+
+    def selected_country_feature(self):
+        """
+        Return the world-country feature selected in the toolbar.
+        """
+
+        if not self.initialize_overview_layers():
+            return None
+
+        country_code = (
+            self.country_combo.currentData()
+        )
+
+        country_settings = (
+            COUNTRY_MAP_SETTINGS.get(
+                country_code
+            )
+        )
+
+        if country_settings is None:
+            return None
+
+        country_name = country_settings[
+            "admin_name"
+        ]
+
+        admin_field_index = (
+            self.world_countries_layer
+            .fields()
+            .indexFromName("ADMIN")
+        )
+
+        if admin_field_index == -1:
+            self.status_message.setText(
+                "Country overview unavailable: "
+                "the ADMIN field was not found."
+            )
+
+            return None
+
+        for feature in (
+            self.world_countries_layer.getFeatures()
+        ):
+            admin_name = str(
+                feature["ADMIN"]
+            ).strip()
+
+            if (
+                admin_name.casefold()
+                == country_name.casefold()
+            ):
+                return feature
+
+        self.status_message.setText(
+            "Country overview unavailable: "
+            f"{country_name} was not found."
+        )
+
+        return None
+
+    def country_extent_for_crs(
+        self,
+        country_feature,
+        target_crs,
+    ):
+        """
+        Transform a country's bounding box into a target CRS.
+        """
+
+        geometry = country_feature.geometry()
+
+        if (
+            geometry is None
+            or geometry.isEmpty()
+        ):
+            return None
+
+        source_crs = (
+            self.world_countries_layer.crs()
+        )
+
+        source_extent = geometry.boundingBox()
+
+        if source_crs == target_crs:
+            country_extent = QgsRectangle(
+                source_extent
+            )
+        else:
+            coordinate_transform = (
+                QgsCoordinateTransform(
+                    source_crs,
+                    target_crs,
+                    self.project,
+                )
+            )
+
+            try:
+                country_extent = (
+                    coordinate_transform
+                    .transformBoundingBox(
+                        source_extent
+                    )
+                )
+            except Exception as error:
+                print(
+                    "Could not transform the selected "
+                    f"country extent: {error}"
+                )
+
+                return None
+
+        country_extent.scale(
+            1.10
+        )
+
+        return country_extent
+
+    def focus_selected_country(
+        self,
+        *args,
+        update_main_map=True,
+    ):
+        """
+        Display the toolbar-selected country in the map canvases.
+        """
+
+        country_feature = (
+            self.selected_country_feature()
+        )
+
+        if country_feature is None:
+            return
+
+        country_code = (
+            self.country_combo.currentData()
+        )
+
+        country_settings = (
+            COUNTRY_MAP_SETTINGS.get(
+                country_code
+            )
+        )
+
+        if country_settings is None:
+            return
+
+        target_crs = QgsCoordinateReferenceSystem(
+            country_settings["crs"]
+        )
+
+        if not target_crs.isValid():
+            self.status_message.setText(
+                "Country map unavailable: "
+                f"invalid CRS {country_settings['crs']}."
+            )
+
+            return
+
+        self.map_canvas.setDestinationCrs(
+            target_crs
+        )
+
+        self.overview_canvas.setDestinationCrs(
+            target_crs
+        )
+
+        country_extent = (
+            self.country_extent_for_crs(
+                country_feature=country_feature,
+                target_crs=target_crs,
+            )
+        )
+
+        if (
+            country_extent is None
+            or country_extent.isEmpty()
+        ):
+            return
+
+        country_name = str(
+            country_feature["ADMIN"]
+        )
+
+        self.overview_canvas.setDestinationCrs(
+            target_crs
+        )
+
+        self.overview_canvas.setLayers(
+            [
+                self.overview_satellite_layer,
+            ]
+        )
+
+        self.overview_canvas.setExtent(
+            country_extent
+        )
+
+        if self.overview_project_marker is not None:
+            self.overview_project_marker.hide()
+
+        self.overview_canvas.refresh()
+
+        if update_main_map:
+            self.refresh_map_layers()
+
+            print(
+                "Main canvas CRS:",
+                self.map_canvas
+                .mapSettings()
+                .destinationCrs()
+                .authid(),
+            )
+
+            print(
+                "Main canvas layers:",
+                [
+                    (
+                        layer.name(),
+                        layer.isValid(),
+                        layer.crs().authid(),
+                    )
+                    for layer in (
+                        self.map_canvas.layers()
+                    )
+                ],
+            )
+
+        if update_main_map:
+            self.map_canvas.setExtent(
+                country_extent
+            )
+
+            self.map_canvas.refresh()
+
+        self.overview_dock.setWindowTitle(
+            f"Country overview — {country_name}"
+        )
+
+        self.status_message.setText(
+            f"Country selected: {country_name}"
+        )
 
     def initialize_overview_layers(self):
         """
@@ -2208,12 +4533,11 @@ class SitesDesktop(QMainWindow):
         project_layers = self.visible_project_layers()
 
         if not project_layers:
-            if self.overview_project_marker is not None:
-                self.overview_project_marker.hide()
+            self.focus_selected_country(
+                update_main_map=False
+            )
 
-            self.overview_canvas.setLayers([])
-            self.overview_canvas.refresh()
-            return
+            return 
 
         if not self.initialize_overview_layers():
             return
@@ -2436,6 +4760,68 @@ def load_application_stylesheet(
     )
 
 
+def create_splash_pixmap(
+    image_path,
+    width=550,
+    height=150,
+):
+    """
+    Load and crop the splash artwork to the requested size
+    without stretching it.
+    """
+
+    pixmap = QPixmap(
+        str(image_path)
+    )
+
+    if pixmap.isNull():
+        return pixmap
+
+    source_width = pixmap.width()
+    source_height = pixmap.height()
+
+    target_ratio = width / height
+    source_ratio = source_width / source_height
+
+    if source_ratio > target_ratio:
+        crop_width = round(
+            source_height * target_ratio
+        )
+
+        crop_x = round(
+            (source_width - crop_width) / 2
+        )
+
+        cropped = pixmap.copy(
+            crop_x,
+            0,
+            crop_width,
+            source_height,
+        )
+
+    else:
+        crop_height = round(
+            source_width / target_ratio
+        )
+
+        crop_y = round(
+            (source_height - crop_height) / 2
+        )
+
+        cropped = pixmap.copy(
+            0,
+            crop_y,
+            source_width,
+            crop_height,
+        )
+
+    return cropped.scaled(
+        width,
+        height,
+        Qt.IgnoreAspectRatio,
+        Qt.SmoothTransformation,
+    )
+
 def main():
     prefix_path = os.environ.get(
         "QGIS_PREFIX_PATH"
@@ -2452,18 +4838,84 @@ def main():
         True,
     )
 
-    app.setApplicationName(
-        "Sites"
+    application_root = Path(
+        __file__
+    ).resolve().parent
+
+    icon_path = (
+        application_root
+        / "assets"
+        / "sovra_icon.png"
     )
+
+    if icon_path.is_file():
+        app.setWindowIcon(
+            QIcon(str(icon_path))
+        )
+
+    app.setApplicationName(
+        "Sovra"
+    )
+
+    application_root = (
+        Path(__file__).resolve().parent
+    )
+
+    splash_path = (
+        application_root
+        / "assets"
+        / "splash.png"
+    )
+
+    splash_pixmap = create_splash_pixmap(
+        image_path=splash_path,
+        width=550,
+        height=150,
+    )
+
+    splash = None
+
+    if not splash_pixmap.isNull():
+        splash = QSplashScreen(
+            splash_pixmap,
+            Qt.WindowStaysOnTopHint,
+        )
+
+        splash.show()
+        splash.raise_()
+
+        app.processEvents()
+
+    else:
+        print(
+            f"Splash image could not be loaded: "
+            f"{splash_path}"
+        )
 
     app.initQgis()
 
-    load_application_stylesheet(
-        app
-    )
-
     window = SitesDesktop()
-    window.show()
+
+
+    def reveal_main_window():
+        window.show()
+        window.raise_()
+        window.activateWindow()
+
+        if splash is not None:
+            splash.finish(window)
+
+
+    if splash is not None:
+        splash.raise_()
+
+        QTimer.singleShot(
+            2000,
+            reveal_main_window,
+        )
+
+    else:
+        reveal_main_window()
 
     exit_code = app.exec_()
 

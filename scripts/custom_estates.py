@@ -1,7 +1,10 @@
+import os
+
 import pandas as pd
 
 from qgis.core import (
     QgsCoordinateTransform,
+    QgsDataSourceUri,
     QgsDistanceArea,
     QgsFeatureRequest,
     QgsGeometry,
@@ -105,11 +108,92 @@ def read_estate_names(
 
     return estate_names
 
+def create_postgis_estates_layer(
+    estate_config,
+):
+    """
+    Open the configured national estate table through the
+    QGIS PostgreSQL provider.
+    """
+
+    password = os.environ.get(
+        "SITES_DB_PASSWORD"
+    )
+
+    if not password:
+        raise RuntimeError(
+            "SITES_DB_PASSWORD has not been set."
+        )
+
+    required_settings = {
+        "schema",
+        "table",
+        "geometry_column",
+        "key_column",
+        "group_fields",
+    }
+
+    missing_settings = (
+        required_settings
+        - set(estate_config)
+    )
+
+    if missing_settings:
+        raise ValueError(
+            "Estate configuration is missing: "
+            + ", ".join(
+                sorted(missing_settings)
+            )
+        )
+
+    uri = QgsDataSourceUri()
+
+    uri.setConnection(
+        os.environ.get(
+            "SITES_DB_HOST",
+            "127.0.0.1",
+        ),
+        os.environ.get(
+            "SITES_DB_PORT",
+            "5433",
+        ),
+        os.environ.get(
+            "SITES_DB_NAME",
+            "sites",
+        ),
+        os.environ.get(
+            "SITES_DB_USER",
+            "sites_app",
+        ),
+        password,
+    )
+
+    uri.setDataSource(
+        estate_config["schema"],
+        estate_config["table"],
+        estate_config["geometry_column"],
+        "",
+        estate_config["key_column"],
+    )
+
+    estates = QgsVectorLayer(
+        uri.uri(False),
+        "National estates",
+        "postgres",
+    )
+
+    if not estates.isValid():
+        raise RuntimeError(
+            "Failed to load the PostGIS estate table "
+            f"{estate_config['schema']}."
+            f"{estate_config['table']}."
+        )
+
+    return estates
 
 def analyse_custom_estates(
     analysis_layer_path,
-    estates_layer_path,
-    csv_file,
+    estate_config,
 ):
     """
     Find named estates genuinely intersecting a custom
@@ -136,21 +220,37 @@ def analyse_custom_estates(
             "The custom analysis layer has no valid CRS."
         )
 
-    estates = QgsVectorLayer(
-        estates_layer_path,
-        "National estates",
-        "ogr",
+    estates = create_postgis_estates_layer(
+        estate_config
     )
-
-    if not estates.isValid():
-        raise ValueError(
-            f"Failed to load estate layer: "
-            f"{estates_layer_path}"
-        )
 
     if not estates.crs().isValid():
         raise ValueError(
-            "The national estate layer has no valid CRS."
+            "The PostGIS estate layer has no valid CRS."
+        )
+
+    display_fields = estate_config.get(
+        "display_fields",
+        estate_config["group_fields"],
+    )
+
+    estate_field_names = {
+        field.name()
+        for field in estates.fields()
+    }
+
+    missing_display_fields = (
+        set(display_fields)
+        - estate_field_names
+    )
+
+    if missing_display_fields:
+        raise ValueError(
+            "PostGIS estate table is missing display "
+            "fields: "
+            + ", ".join(
+                sorted(missing_display_fields)
+            )
         )
 
     site_geometry = get_combined_geometry(
@@ -209,9 +309,35 @@ def analyse_custom_estates(
         estate_search_extent
     )
 
-    intersections_by_id = {}
+    intersections_by_name = {}
 
     for feature in estates.getFeatures(request):
+        name_parts = []
+
+        for field_name in display_fields:
+            value = feature[field_name]
+
+            if value is None:
+                continue
+
+            value_text = str(value).strip()
+
+            if value_text in {
+                "",
+                "NULL",
+            }:
+                continue
+
+            name_parts.append(
+                value_text
+            )
+
+        estate_name = " ".join(
+            name_parts
+        ).upper()
+
+        if not estate_name:
+            continue
         geometry = feature.geometry()
 
         if geometry is None or geometry.isEmpty():
@@ -245,31 +371,16 @@ def analyse_custom_estates(
         ):
             continue
 
-        intersections_by_id[
-            int(feature.id())
-        ] = intersection
-
-    estate_names = read_estate_names(
-        csv_file=csv_file,
-        feature_ids=intersections_by_id.keys(),
-    )
-
-    geometries_by_name = {}
-
-    for feature_id, geometry in (
-        intersections_by_id.items()
-    ):
-        estate_name = estate_names.get(
-            feature_id
-        )
-
-        if estate_name is None:
-            continue
-
-        geometries_by_name.setdefault(
+        intersections_by_name.setdefault(
             estate_name,
             [],
-        ).append(geometry)
+        ).append(
+            intersection
+        )
+
+    geometries_by_name = (
+        intersections_by_name
+    )
 
     estate_results = []
     matched_geometries = []

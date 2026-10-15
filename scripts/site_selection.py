@@ -466,10 +466,15 @@ def prepare_custom_polygon_source(
             "No custom polygon path was supplied."
         )
 
-    if not os.path.isfile(custom_polygon_path):
+    source_file = custom_polygon_path.split(
+        "|",
+        1,
+    )[0]
+
+    if not os.path.isfile(source_file):
         raise FileNotFoundError(
             f"Custom polygon does not exist: "
-            f"{custom_polygon_path}"
+            f"{source_file}"
         )
 
     source_layer = QgsVectorLayer(
@@ -504,7 +509,7 @@ def prepare_custom_polygon_source(
         )
 
     source_name = os.path.splitext(
-        os.path.basename(custom_polygon_path)
+        os.path.basename(source_file)
     )[0]
 
     if folder_name_override:

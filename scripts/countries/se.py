@@ -27,6 +27,11 @@ ESTATE_CONFIG = {
         "sector",
         "segment",
     ),
+        "display_fields": (
+        "borough",
+        "sector",
+        "segment",
+    ),
 }
 
 

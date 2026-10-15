@@ -27,6 +27,9 @@ ESTATE_CONFIG = {
     "group_fields": (
         "kiinteisto",
     ),
+        "display_fields": (
+        "kiinteis_1",
+    ),
 }
 
 

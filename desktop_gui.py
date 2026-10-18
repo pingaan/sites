@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import shutil
+import time
 
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,8 @@ from qgis.PyQt.QtCore import (
     pyqtSignal,
     QPointF,
     QSizeF,
+    QUrl,
+    QSettings,
 )
 from qgis.PyQt.QtGui import (
     QColor,
@@ -27,6 +30,7 @@ from qgis.PyQt.QtGui import (
     QPixmap,
     QCursor,
     QPainter,
+    QDesktopServices,
 )
 from qgis.PyQt.QtWidgets import (
     QAction,
@@ -51,6 +55,7 @@ from qgis.PyQt.QtWidgets import (
     QInputDialog,
     QSplashScreen,
     QInputDialog,
+    QMenu,
 )
 
 from qgis.gui import (
@@ -141,6 +146,25 @@ class DrawPolygonMapTool(QgsMapTool):
 
     def __init__(self, canvas):
         super().__init__(canvas)
+
+        self.application_settings = QSettings(
+            "Sovra",
+            "Sovra",
+        )
+
+        self.language_code = str(
+            self.application_settings.value(
+                "language",
+                "en",
+            )
+        ).strip().lower()
+
+        if self.language_code not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            self.language_code = "en"
 
         self.canvas = canvas
         self.points = []
@@ -779,12 +803,28 @@ class MeasurementMapTool(QgsMapTool):
             )
 
 class SitesDesktop(QMainWindow):
-    """
-    Main GIS workspace for Sites.
-    """
 
     def __init__(self):
         super().__init__()
+
+        self.application_settings = QSettings(
+            "Sovra",
+            "Sovra",
+        )
+
+        self.language_code = str(
+            self.application_settings.value(
+                "language",
+                "en",
+            )
+        ).strip().lower()
+
+        if self.language_code not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            self.language_code = "en"
 
         self.project = QgsProject.instance()
         self.analysis_window = None
@@ -831,6 +871,7 @@ class SitesDesktop(QMainWindow):
         self.create_information_panel()
         self.create_overview_panel()
         self.create_actions()
+        self.create_language_actions()
         self.create_menus()
         self.create_toolbars()
         self.create_status_bar()
@@ -839,6 +880,10 @@ class SitesDesktop(QMainWindow):
         self.activate_pan_tool()
         self.set_basemap("OpenStreetMap")
         self.focus_selected_country()
+        QTimer.singleShot(
+            750,
+            self.check_for_stale_projects,
+        )
 
     # ---------------------------------------------------------
     # Main map
@@ -1026,6 +1071,44 @@ class SitesDesktop(QMainWindow):
             self.load_local_project
         )
 
+        self.open_local_project_action = QAction(
+            "Open",
+            self.projects_tree,
+        )
+
+        self.open_local_project_action.triggered.connect(
+            self.open_selected_local_project
+        )
+
+        self.projects_tree.addAction(
+            self.open_local_project_action
+        )
+
+        self.open_project_location_action = QAction(
+            "Open location",
+            self.projects_tree,
+        )
+
+        self.open_project_location_action.triggered.connect(
+            self.open_selected_project_location
+        )
+
+        self.projects_tree.addAction(
+            self.open_project_location_action
+        )
+
+        self.projects_tree.addAction(
+            QAction(
+                self.projects_tree
+            )
+        )
+
+        separator_action = (
+            self.projects_tree.actions()[-1]
+        )
+
+        separator_action.setSeparator(True)
+
         self.rename_project_action = QAction(
             "Rename selected project or folder",
             self.projects_tree,
@@ -1106,6 +1189,232 @@ class SitesDesktop(QMainWindow):
                     directory.rmdir()
             except OSError:
                 continue
+
+    def check_for_stale_projects(self):
+        """
+        Find analysis-run folders whose newest QGIS project
+        file has not been modified during the last 30 days.
+
+        Nothing is removed without user confirmation.
+        """
+
+        if not self.projects_root.is_dir():
+            return
+
+        stale_before = (
+            time.time()
+            - 30 * 24 * 60 * 60
+        )
+
+        project_files = list(
+            self.projects_root.rglob(
+                "*.qgz"
+            )
+        )
+
+        project_files.extend(
+            self.projects_root.rglob(
+                "*.qgs"
+            )
+        )
+
+        run_projects = {}
+
+        for project_path in project_files:
+            try:
+                modified_time = (
+                    project_path.stat().st_mtime
+                )
+            except OSError:
+                continue
+
+            run_directory = (
+                project_path.parent.resolve()
+            )
+
+            previous_modified_time = (
+                run_projects.get(
+                    run_directory
+                )
+            )
+
+            if (
+                previous_modified_time is None
+                or modified_time
+                > previous_modified_time
+            ):
+                run_projects[
+                    run_directory
+                ] = modified_time
+
+        current_project_path = None
+
+        if self.project.fileName():
+            try:
+                current_project_path = Path(
+                    self.project.fileName()
+                ).resolve()
+            except OSError:
+                current_project_path = None
+
+        stale_directories = []
+
+        for (
+            run_directory,
+            modified_time,
+        ) in run_projects.items():
+            if modified_time >= stale_before:
+                continue
+
+            if (
+                current_project_path is not None
+                and current_project_path.parent
+                == run_directory
+            ):
+                continue
+
+            stale_directories.append(
+                (
+                    run_directory,
+                    modified_time,
+                )
+            )
+
+        stale_directories.sort(
+            key=lambda item: item[1]
+        )
+
+        if not stale_directories:
+            return
+
+        preview_lines = []
+
+        for run_directory, modified_time in (
+            stale_directories[:12]
+        ):
+            try:
+                relative_path = (
+                    run_directory.relative_to(
+                        self.projects_root
+                    )
+                )
+            except ValueError:
+                relative_path = run_directory
+
+            modified_text = time.strftime(
+                "%Y-%m-%d",
+                time.localtime(
+                    modified_time
+                ),
+            )
+
+            preview_lines.append(
+                f"• {relative_path} "
+                f"({modified_text})"
+            )
+
+        if len(stale_directories) > 12:
+            remaining_count = (
+                len(stale_directories) - 12
+            )
+
+            preview_lines.append(
+                f"• …and {remaining_count} more"
+            )
+
+        project_list = "\n".join(
+            preview_lines
+        )
+
+        answer = QMessageBox.question(
+            self,
+            "Old local projects",
+            (
+                f"{len(stale_directories)} local "
+                "project run(s) have not been updated "
+                "during the last 30 days:\n\n"
+                f"{project_list}\n\n"
+                "Remove these local project runs?\n\n"
+                "This permanently deletes their local "
+                "folders and generated analysis files."
+            ),
+            QMessageBox.Yes
+            | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if answer != QMessageBox.Yes:
+            return
+
+        removed_count = 0
+        removal_errors = []
+
+        projects_root = (
+            self.projects_root.resolve()
+        )
+
+        for run_directory, _ in stale_directories:
+            try:
+                run_directory = (
+                    run_directory.resolve()
+                )
+
+                try:
+                    run_directory.relative_to(
+                        projects_root
+                    )
+                except ValueError:
+                    raise RuntimeError(
+                        "Folder is outside the local "
+                        "Projects directory."
+                    )
+
+                if run_directory == projects_root:
+                    raise RuntimeError(
+                        "Refusing to remove the Projects "
+                        "root directory."
+                    )
+
+                if run_directory.is_dir():
+                    shutil.rmtree(
+                        run_directory
+                    )
+
+                    removed_count += 1
+
+            except Exception as error:
+                removal_errors.append(
+                    f"{run_directory}: {error}"
+                )
+
+        self.refresh_project_list()
+
+        if removal_errors:
+            error_preview = "\n".join(
+                removal_errors[:8]
+            )
+
+            QMessageBox.warning(
+                self,
+                "Project cleanup incomplete",
+                (
+                    f"Removed {removed_count} old "
+                    "project run(s).\n\n"
+                    "Some folders could not be removed:"
+                    f"\n\n{error_preview}"
+                ),
+            )
+
+            return
+
+        QMessageBox.information(
+            self,
+            "Project cleanup completed",
+            (
+                f"Removed {removed_count} old local "
+                "project run(s)."
+            ),
+        )
 
     def refresh_project_list(self):
         self.projects_tree.clear()
@@ -1207,6 +1516,152 @@ class SitesDesktop(QMainWindow):
 
             self.projects_tree.addTopLevelItem(
                 unavailable_item
+            )
+
+    def open_selected_local_project(self):
+        """
+        Open the selected local project.
+
+        When a project folder is selected, open its newest
+        analysis run.
+        """
+
+        selected_items = (
+            self.projects_tree.selectedItems()
+        )
+
+        if len(selected_items) != 1:
+            QMessageBox.information(
+                self,
+                "Open project",
+                "Select one project or project folder.",
+            )
+
+            return
+
+        selected_item = selected_items[0]
+
+        project_path = selected_item.data(
+            0,
+            Qt.UserRole,
+        )
+
+        if (
+            not project_path
+            and selected_item.childCount() > 0
+        ):
+            newest_run_item = (
+                selected_item.child(0)
+            )
+
+            project_path = newest_run_item.data(
+                0,
+                Qt.UserRole,
+            )
+
+        if not project_path:
+            QMessageBox.information(
+                self,
+                "Open project",
+                (
+                    "The selected folder does not contain "
+                    "a QGIS project."
+                ),
+            )
+
+            return
+
+        if not Path(project_path).is_file():
+            QMessageBox.warning(
+                self,
+                "Project missing",
+                (
+                    "The selected QGIS project no longer "
+                    "exists:\n\n"
+                    f"{project_path}"
+                ),
+            )
+
+            self.refresh_project_list()
+
+            return
+
+        self.load_project(
+            project_path
+        )
+
+    def open_selected_project_location(self):
+        """
+        Open the selected project or run directory in the
+        operating system's file manager.
+        """
+
+        selected_items = (
+            self.projects_tree.selectedItems()
+        )
+
+        if len(selected_items) != 1:
+            QMessageBox.information(
+                self,
+                "Open location",
+                "Select one project or project folder.",
+            )
+
+            return
+
+        selected_item = selected_items[0]
+
+        directory_path = selected_item.data(
+            0,
+            Qt.UserRole + 1,
+        )
+
+        if not directory_path:
+            QMessageBox.information(
+                self,
+                "Open location",
+                (
+                    "No local folder is associated with "
+                    "the selected item."
+                ),
+            )
+
+            return
+
+        directory = Path(
+            directory_path
+        ).resolve()
+
+        if not directory.is_dir():
+            QMessageBox.warning(
+                self,
+                "Folder missing",
+                (
+                    "The selected folder no longer "
+                    "exists:\n\n"
+                    f"{directory}"
+                ),
+            )
+
+            self.refresh_project_list()
+
+            return
+
+        opened = QDesktopServices.openUrl(
+            QUrl.fromLocalFile(
+                str(directory)
+            )
+        )
+
+        if not opened:
+            QMessageBox.warning(
+                self,
+                "Open location",
+                (
+                    "The operating system could not open "
+                    "the selected folder:\n\n"
+                    f"{directory}"
+                ),
             )
 
     def load_local_project(
@@ -1676,6 +2131,47 @@ class SitesDesktop(QMainWindow):
             self.print_project
         )
 
+        export_icon = QgsApplication.getThemeIcon(
+            "/mActionSaveAs.svg"
+        )
+
+        if export_icon.isNull():
+            export_icon = self.style().standardIcon(
+                QStyle.SP_DialogSaveButton
+            )
+
+        self.export_solar_action = QAction(
+            export_icon,
+            "Export eligible solar area…",
+            self,
+        )
+
+        self.export_solar_action.setToolTip(
+            "Export the eligible solar area as a GeoPackage"
+        )
+
+        self.export_solar_action.triggered.connect(
+            lambda checked=False: (
+                self.export_analysis_area("solar")
+            )
+        )
+
+        self.export_wind_action = QAction(
+            export_icon,
+            "Export eligible wind area…",
+            self,
+        )
+
+        self.export_wind_action.setToolTip(
+            "Export the eligible wind area as a GeoPackage"
+        )
+
+        self.export_wind_action.triggered.connect(
+            lambda checked=False: (
+                self.export_analysis_area("wind")
+            )
+        )
+
         self.exit_action = QAction(
             "Exit",
             self,
@@ -1855,6 +2351,118 @@ class SitesDesktop(QMainWindow):
     # Menus
     # ---------------------------------------------------------
 
+    def create_language_actions(self):
+        """
+        Create the global application-language actions.
+
+        Application language is independent of the country
+        selected for analysis.
+        """
+
+        self.language_action_group = QActionGroup(
+            self
+        )
+
+        self.language_action_group.setExclusive(
+            True
+        )
+
+        self.language_actions = {}
+
+        language_definitions = (
+            (
+                "English",
+                "en",
+            ),
+            (
+                "Svenska",
+                "sv",
+            ),
+            (
+                "Suomi",
+                "fi",
+            ),
+        )
+
+        for language_name, language_code in (
+            language_definitions
+        ):
+            action = QAction(
+                language_name,
+                self,
+            )
+
+            action.setCheckable(
+                True
+            )
+
+            action.setData(
+                language_code
+            )
+
+            action.setChecked(
+                language_code
+                == self.language_code
+            )
+
+            action.triggered.connect(
+                lambda checked=False,
+                code=language_code:
+                self.set_application_language(
+                    code
+                )
+            )
+
+            self.language_action_group.addAction(
+                action
+            )
+
+            self.language_actions[
+                language_code
+            ] = action
+
+    def set_application_language(
+        self,
+        language_code,
+    ):
+        """
+        Store the global application language.
+
+        This setting does not change the selected analysis
+        country, country CRS or country datasets.
+        """
+
+        language_code = str(
+            language_code
+        ).strip().lower()
+
+        if language_code not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            return
+
+        self.language_code = language_code
+
+        self.application_settings.setValue(
+            "language",
+            language_code,
+        )
+
+        self.application_settings.sync()
+
+        language_names = {
+            "en": "English",
+            "sv": "Svenska",
+            "fi": "Suomi",
+        }
+
+        self.status_message.setText(
+            "Application language selected: "
+            f"{language_names[language_code]}"
+        )
+
     def create_menus(self):
         file_menu = self.menuBar().addMenu(
             "&File"
@@ -1905,6 +2513,25 @@ class SitesDesktop(QMainWindow):
                 action
             )
 
+        settings_menu = self.menuBar().addMenu(
+            "&Settings"
+        )
+
+        language_menu = settings_menu.addMenu(
+            "Language"
+        )
+
+        for language_code in (
+            "en",
+            "sv",
+            "fi",
+        ):
+            language_menu.addAction(
+                self.language_actions[
+                    language_code
+                ]
+            )
+
         analysis_menu = self.menuBar().addMenu(
             "&Analysis"
         )
@@ -1933,6 +2560,194 @@ class SitesDesktop(QMainWindow):
     # ---------------------------------------------------------
     # Toolbars
     # ---------------------------------------------------------
+
+    def find_analysis_output_layer(
+        self,
+        output_id,
+    ):
+        """
+        Find a solar or wind result layer using its stable
+        project property.
+
+        The name/source fallback supports older projects created
+        before the custom property was introduced.
+        """
+
+        vector_layers = []
+
+        for layer in self.project.mapLayers().values():
+            if (
+                layer.type()
+                != QgsMapLayerType.VectorLayer
+            ):
+                continue
+
+            vector_layers.append(
+                layer
+            )
+
+            stored_id = str(
+                layer.customProperty(
+                    "sites/analysis_output",
+                    "",
+                )
+            )
+
+            if stored_id == output_id:
+                return layer
+
+        # Compatibility with projects created before the stable
+        # analysis-output property was introduced.
+        for layer in vector_layers:
+            searchable_text = (
+                f"{layer.name()} {layer.source()}"
+                .casefold()
+            )
+
+            if (
+                output_id in searchable_text
+                and (
+                    "candidate" in searchable_text
+                    or "potential" in searchable_text
+                )
+            ):
+                return layer
+
+        return None
+
+    def export_analysis_area(
+        self,
+        output_id,
+    ):
+        """
+        Export one complete eligible-area result to a standalone
+        GeoPackage.
+        """
+
+        definitions = {
+            "solar": {
+                "title": "eligible solar area",
+                "filename": "eligible_solar_area.gpkg",
+                "layer_name": "eligible_solar_area",
+            },
+            "wind": {
+                "title": "eligible wind area",
+                "filename": "eligible_wind_area.gpkg",
+                "layer_name": "eligible_wind_area",
+            },
+        }
+
+        definition = definitions.get(
+            output_id
+        )
+
+        if definition is None:
+            return
+
+        layer = self.find_analysis_output_layer(
+            output_id
+        )
+
+        if layer is None or not layer.isValid():
+            QMessageBox.warning(
+                self,
+                "Analysis area unavailable",
+                (
+                    f"The {definition['title']} could not "
+                    "be found in the loaded project."
+                ),
+            )
+            return
+
+        project_path = self.project.fileName()
+
+        if project_path:
+            default_directory = os.path.dirname(
+                project_path
+            )
+        else:
+            default_directory = os.path.expanduser(
+                "~"
+            )
+
+        suggested_path = os.path.join(
+            default_directory,
+            definition["filename"],
+        )
+
+        output_path, _ = QFileDialog.getSaveFileName(
+            self,
+            f"Export {definition['title']}",
+            suggested_path,
+            "GeoPackage (*.gpkg)",
+        )
+
+        if not output_path:
+            return
+
+        if not output_path.lower().endswith(
+            ".gpkg"
+        ):
+            output_path += ".gpkg"
+
+        options = (
+            QgsVectorFileWriter.SaveVectorOptions()
+        )
+
+        options.driverName = "GPKG"
+        options.layerName = definition[
+            "layer_name"
+        ]
+
+        options.actionOnExistingFile = (
+            QgsVectorFileWriter
+            .CreateOrOverwriteFile
+        )
+
+        # GeoPackage reserves the name 'fid' for its primary key.
+        # Excluding an existing attribute with that name prevents
+        # the OGR "Wrong field type for fid" error.
+        options.attributes = [
+            field_index
+            for field_index, field in enumerate(
+                layer.fields()
+            )
+            if field.name().casefold() != "fid"
+        ]
+
+        writer_result = (
+            QgsVectorFileWriter
+            .writeAsVectorFormatV3(
+                layer,
+                output_path,
+                self.project.transformContext(),
+                options,
+            )
+        )
+
+        if (
+            writer_result[0]
+            != QgsVectorFileWriter.NoError
+        ):
+            QMessageBox.critical(
+                self,
+                "Export failed",
+                (
+                    f"The {definition['title']} could "
+                    "not be exported:\n\n"
+                    f"{writer_result[1]}"
+                ),
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Export completed",
+            (
+                f"The {definition['title']} was exported "
+                f"successfully:\n\n{output_path}"
+            ),
+        )
 
     def create_toolbars(self):
         map_toolbar = self.addToolBar(
@@ -1973,6 +2788,50 @@ class SitesDesktop(QMainWindow):
 
         map_toolbar.addAction(
             self.print_project_action
+        )
+
+        self.export_area_menu = QMenu(
+            self
+        )
+
+        self.export_area_menu.addAction(
+            self.export_solar_action
+        )
+
+        self.export_area_menu.addAction(
+            self.export_wind_action
+        )
+
+        self.export_area_button = QToolButton(
+            self
+        )
+
+        self.export_area_button.setIcon(
+            self.export_solar_action.icon()
+        )
+
+        self.export_area_button.setText(
+            "Export area"
+        )
+
+        self.export_area_button.setToolTip(
+            "Export an eligible analysis area"
+        )
+
+        self.export_area_button.setToolButtonStyle(
+            Qt.ToolButtonTextBesideIcon
+        )
+
+        self.export_area_button.setPopupMode(
+            QToolButton.InstantPopup
+        )
+
+        self.export_area_button.setMenu(
+            self.export_area_menu
+        )
+
+        map_toolbar.addWidget(
+            self.export_area_button
         )
 
         map_toolbar.addSeparator()
@@ -2148,6 +3007,10 @@ class SitesDesktop(QMainWindow):
     def connect_signals(self):
         self.open_project_action.triggered.connect(
             self.open_project
+        )
+
+        self.source_input.returnPressed.connect(
+            self.start_analysis
         )
 
         self.save_project_action.triggered.connect(
@@ -3556,7 +4419,10 @@ class SitesDesktop(QMainWindow):
             self.create_local_project_snapshot()
         )
 
-        self.analysis_window = AnalysisWindow()
+        self.analysis_window = AnalysisWindow(
+            language=self.language_code,
+            parent=self,
+        )
 
         country_index = (
             self.analysis_window
@@ -4683,15 +5549,88 @@ class SitesDesktop(QMainWindow):
         )
 
     def show_about(self):
-        QMessageBox.about(
-            self,
-            "About Sites",
-            (
-                "Sites\n\n"
-                "Renewable energy site analysis "
-                "and GIS workspace."
-            ),
+        application_root = (
+            Path(__file__).resolve().parent
         )
+
+        branding_directory = (
+            application_root
+            / "assets"
+            / "branding"
+        )
+
+        technologies = [
+            (
+                "QGIS",
+                branding_directory
+                / "qgis-logo.png",
+            ),
+            (
+                "Qt",
+                branding_directory
+                / "qt-logo.png",
+            ),
+            (
+                "Python",
+                branding_directory
+                / "python-powered.png",
+            ),
+        ]
+
+        technology_rows = []
+
+        for technology_name, logo_path in technologies:
+            if logo_path.is_file():
+                technology_rows.append(
+                    "<td style='padding: 8px 14px;'>"
+                    f"<img src='{logo_path.as_uri()}' "
+                    "height='36'>"
+                    "</td>"
+                )
+            else:
+                technology_rows.append(
+                    "<td style='padding: 8px 14px;'>"
+                    f"<b>{technology_name}</b>"
+                    "</td>"
+                )
+
+        technology_html = "".join(
+            technology_rows
+        )
+
+        about_box = QMessageBox(
+            self
+        )
+
+        about_box.setWindowTitle(
+            "About Sovra"
+        )
+
+        about_box.setTextFormat(
+            Qt.RichText
+        )
+
+        about_box.setText(
+            "<div style='min-width: 420px;'>"
+            "<h2 style='color: #153854;'>Sovra</h2>"
+            "<p>Renewable-energy site analysis and "
+            "GIS workspace.</p>"
+            "<p><b>Powered by:</b></p>"
+            "<table><tr>"
+            f"{technology_html}"
+            "</tr></table>"
+            "<p style='color: #657585;'>"
+            "Sovra uses open-source geospatial and "
+            "application-development technologies."
+            "</p>"
+            "</div>"
+        )
+
+        about_box.setStandardButtons(
+            QMessageBox.Ok
+        )
+
+        about_box.exec_()
 
 
 def load_application_stylesheet(

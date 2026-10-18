@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-
+from scripts.translations import translated_layer_name
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsFillSymbol,
@@ -213,6 +213,13 @@ def add_analysis_outputs(
         )
 
         layer.renderer().setSymbol(symbol)
+
+        layer.setCustomProperty(
+            "sites/analysis_output",
+            definition["id"],
+        )
+
+        project.addMapLayer(layer, False)
 
         project.addMapLayer(layer, False)
 
@@ -828,6 +835,7 @@ def add_country_outputs(
     country_layer_outputs,
     style_resolver=None,
     svg_path=None,
+    language="en",
 ):
     """
     Add locally clipped country constraint layers to the project.
@@ -861,7 +869,15 @@ def add_country_outputs(
     for layer_output in country_layer_outputs:
 
         definition = layer_output["definition"]
-        layer_name = definition["name"]
+
+        internal_layer_name = (
+            definition["name"]
+        )
+
+        layer_name = translated_layer_name(
+            definition=definition,
+            language=language,
+        )
         output_path = layer_output.get(
             "output_path"
         )
@@ -875,7 +891,7 @@ def add_country_outputs(
                 f"{layer_name} — no file."
             )
 
-            layer_ids[layer_name] = None
+            layer_ids[internal_layer_name] = None
             continue
 
         layer = QgsVectorLayer(
@@ -896,7 +912,7 @@ def add_country_outputs(
                 f"{layer_name} — no features."
             )
 
-            layer_ids[layer_name] = None
+            layer_ids[internal_layer_name] = None
             continue
 
         style = (
@@ -929,7 +945,7 @@ def add_country_outputs(
             visible
         )
 
-        layer_ids[layer_name] = layer.id()
+        layer_ids[internal_layer_name] = layer.id()
 
         print(
             f"Country constraint added to map: "

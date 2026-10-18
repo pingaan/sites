@@ -35,8 +35,27 @@ class SitesWindow(QMainWindow):
     Main application window for Sites.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        language="en",
+        parent=None,
+    ):
+        super().__init__(
+            parent
+        )
+
+        language = str(
+            language
+        ).strip().lower()
+
+        if language not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            language = "en"
+
+        self.language_code = language
 
         self.process = None
         self.cancel_requested = False
@@ -609,6 +628,11 @@ class SitesWindow(QMainWindow):
         environment.insert(
             "SITES_COUNTRY_CODE",
             country_code,
+        )
+
+        environment.insert(
+            "SITES_LANGUAGE",
+            self.language_code,
         )
 
         if source_type == "estate":

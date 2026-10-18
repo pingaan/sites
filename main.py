@@ -171,7 +171,7 @@ custom_polygon = (
     or None
 )
 
-def main():
+def run_analysis(runtime):
 
     settings = UserSettings()
 
@@ -189,6 +189,35 @@ def main():
             supplied_country_code
         )
 
+    supplied_language = (
+        os.environ.get(
+            "SITES_LANGUAGE",
+            "",
+        )
+        .strip()
+        .lower()
+    )
+
+    if supplied_language:
+        if supplied_language not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            raise ValueError(
+                "Unsupported application language: "
+                f"{supplied_language!r}"
+            )
+
+        settings.language = (
+            supplied_language
+        )
+
+    print(
+        "Application language: "
+        f"{settings.language}"
+    )
+
     run_id = create_run_id()
 
     print(
@@ -203,6 +232,8 @@ def main():
     print("Starting solar site analysis...")
 
     qgs = initialize_qgis()
+
+    runtime["qgs"] = qgs
 
     cleanup_targets = []
     cleanup_folder_path = None
@@ -820,6 +851,7 @@ def main():
                 None,
             ),
             svg_path=paths["svg_path"],
+            language=settings.language,
         )
 
         grid_proximity_result = analyse_grid_proximity(
@@ -1465,29 +1497,62 @@ def main():
         )
 
     finally:
-        neighbour_groups = None
+        # The outer main function performs QGIS teardown after
+        # this function's local layer objects have been released.
+        pass
 
-        # Release references to layer-tree groups before
-        # clearing them.
-        map_data = None
+    return {
+        "targets": cleanup_targets,
+        "folder_path": cleanup_folder_path,
+    }
 
-        QgsProject.instance().clear()
+def main():
+    runtime = {}
 
-        gc.collect()
+    cleanup_result = {
+        "targets": [],
+        "folder_path": None,
+    }
 
-        shutdown_qgis(qgs)
-
-    print("QGIS shut down cleanly.")
-
-    if (
-        cleanup_targets
-        and cleanup_folder_path
-    ):
-        remove_cleanup_targets(
-            folder_path=cleanup_folder_path,
-            removal_targets=cleanup_targets,
+    try:
+        cleanup_result = run_analysis(
+            runtime
         )
 
+    finally:
+        qgs = runtime.pop(
+            "qgs",
+            None,
+        )
+
+        if qgs is not None:
+            QgsProject.instance().clear()
+
+            gc.collect()
+
+            shutdown_qgis(qgs)
+
+            qgs = None
+
+            gc.collect()
+
+    print(
+        "QGIS shut down cleanly."
+    )
+
+    cleanup_targets = cleanup_result[
+        "targets"
+    ]
+
+    cleanup_folder_path = cleanup_result[
+        "folder_path"
+    ]
+
+    if cleanup_targets and cleanup_folder_path:
+        remove_cleanup_targets(
+            cleanup_folder_path,
+            cleanup_targets,
+        )
 
 if __name__ == "__main__":
     main()

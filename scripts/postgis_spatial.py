@@ -313,7 +313,10 @@ def download_country_layers_from_postgis(
                 intersection_layer_path
             ),
             output_path=output_path,
-            layer_name=definition["name"],
+            layer_name=definition.get(
+                "display_name",
+                definition["name"],
+            ),
             allow_empty=True,
         )
 

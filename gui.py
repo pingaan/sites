@@ -3,6 +3,10 @@ import re
 import sys
 import shutil
 
+from scripts.translations import (
+    normalise_language,
+    ui_text,
+)
 from pathlib import Path
 from qgis.PyQt.QtCore import (
     QProcess,
@@ -44,18 +48,11 @@ class SitesWindow(QMainWindow):
             parent
         )
 
-        language = str(
-            language
-        ).strip().lower()
-
-        if language not in {
-            "en",
-            "sv",
-            "fi",
-        }:
-            language = "en"
-
-        self.language_code = language
+        self.language_code = (
+            normalise_language(
+                language
+            )
+        )
 
         self.process = None
         self.cancel_requested = False
@@ -64,7 +61,9 @@ class SitesWindow(QMainWindow):
         self.large_area_warning_shown = False
 
         self.setWindowTitle(
-            "Sovra — Analysis progress"
+            self.text(
+                "analysis_progress_title"
+            )
         )
 
         self.resize(
@@ -75,6 +74,21 @@ class SitesWindow(QMainWindow):
         self.create_interface()
         self.connect_signals()
         self.update_source_controls()
+
+    def text(
+        self,
+        key,
+        **values,
+    ):
+        """
+        Return text in the selected global language.
+        """
+
+        return ui_text(
+            self.language_code,
+            key,
+            **values,
+        )
 
     def create_interface(self):
         """
@@ -102,7 +116,7 @@ class SitesWindow(QMainWindow):
         # -------------------------------------------------
 
         heading = QLabel(
-            "Sites"
+            "Sovra"
         )
 
         heading_font = heading.font()
@@ -111,7 +125,9 @@ class SitesWindow(QMainWindow):
         heading.setFont(heading_font)
 
         subtitle = QLabel(
-            "Renewable energy site analysis"
+            self.text(
+                "renewable_energy_site_analysis"
+            )
         )
 
         heading.setVisible(False)
@@ -122,7 +138,7 @@ class SitesWindow(QMainWindow):
         # -------------------------------------------------
 
         source_group = QGroupBox(
-            "Analysis source"
+            self.text("analysis_source")
         )
 
         source_layout = QFormLayout(
@@ -132,17 +148,17 @@ class SitesWindow(QMainWindow):
         self.country_combo = QComboBox()
 
         self.country_combo.addItem(
-            "Sweden",
+            self.text("country_sweden"),
             "SE",
         )
 
         self.country_combo.addItem(
-            "Finland",
+            self.text("country_finland"),
             "FI",
         )
 
         source_layout.addRow(
-            "Country:",
+            self.text("country_label"),
             self.country_combo,
         )
 
@@ -160,11 +176,11 @@ class SitesWindow(QMainWindow):
         )
 
         self.estate_radio = QRadioButton(
-            "Estate identifier"
+            self.text("estate_identifier")
         )
 
         self.polygon_radio = QRadioButton(
-            "Custom polygon"
+            self.text("custom_polygon")
         )
 
         self.estate_radio.setChecked(True)
@@ -180,7 +196,7 @@ class SitesWindow(QMainWindow):
         source_type_layout.addStretch()
 
         source_layout.addRow(
-            "Source type:",
+            self.text("source_type_label"),
             source_type_widget,
         )
 
@@ -191,7 +207,7 @@ class SitesWindow(QMainWindow):
         )
 
         source_layout.addRow(
-            "Estate:",
+            self.text("estate_label"),
             self.estate_input,
         )
 
@@ -212,7 +228,7 @@ class SitesWindow(QMainWindow):
         self.polygon_input.setReadOnly(True)
 
         self.browse_button = QPushButton(
-            "Browse…"
+            self.text("browse")
         )
 
         polygon_layout.addWidget(
@@ -224,7 +240,7 @@ class SitesWindow(QMainWindow):
         )
 
         source_layout.addRow(
-            "Polygon file:",
+            self.text("polygon_file_label"),
             polygon_widget,
         )
 
@@ -262,7 +278,9 @@ class SitesWindow(QMainWindow):
         self.start_button.setVisible(False)
 
         self.cancel_button = QPushButton(
-            "Cancel"
+            self.text(
+                "cancel"
+            )
         )
 
         self.cancel_button.setMinimumHeight(
@@ -289,7 +307,7 @@ class SitesWindow(QMainWindow):
         # -------------------------------------------------
 
         self.status_label = QLabel(
-            "Preparing analysis…"
+            self.text("preparing_analysis")
         )
 
         self.status_label.setAlignment(
@@ -318,7 +336,7 @@ class SitesWindow(QMainWindow):
         )
 
         self.progress_step_label = QLabel(
-            "Preparing analysis"
+            self.text("preparing_analysis")
         )
 
         self.progress_step_label.setWordWrap(
@@ -334,7 +352,9 @@ class SitesWindow(QMainWindow):
         )
 
         self.details_button = QPushButton(
-            "Show more details"
+            self.text(
+                "show_details"
+            )
         )
 
         self.details_button.setCheckable(True)
@@ -355,7 +375,9 @@ class SitesWindow(QMainWindow):
         self.log_output.setVisible(False)
 
         self.log_output.setPlaceholderText(
-            "Analysis messages will appear here."
+            self.text(
+                "analysis_messages_placeholder"
+            )
         )
 
         main_layout.addWidget(
@@ -439,7 +461,7 @@ class SitesWindow(QMainWindow):
 
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select custom polygon",
+            self.text("select_custom_polygon"),
             os.path.expanduser("~"),
             (
                 "Vector data "
@@ -467,7 +489,9 @@ class SitesWindow(QMainWindow):
 
         if visible:
             self.details_button.setText(
-                "Hide details"
+                self.text(
+                    "hide_details"
+                )
             )
 
             self.resize(
@@ -477,7 +501,9 @@ class SitesWindow(QMainWindow):
 
         else:
             self.details_button.setText(
-                "Show more details"
+                self.text(
+                    "show_details"
+                )
             )
 
             self.resize(
@@ -498,8 +524,12 @@ class SitesWindow(QMainWindow):
         ):
             QMessageBox.information(
                 self,
-                "Analysis already running",
-                "An analysis is already running.",
+                self.text(
+                    "analysis_already_running"
+                ),
+                self.text(
+                    "analysis_already_running_message"
+                ),
             )
 
             return
@@ -518,8 +548,10 @@ class SitesWindow(QMainWindow):
             if not source_value:
                 QMessageBox.warning(
                     self,
-                    "Missing estate",
-                    "Enter an estate identifier.",
+                    self.text("missing_polygon"),
+                    self.text(
+                        "select_custom_polygon_file"
+                    ),
                 )
 
                 return
@@ -534,8 +566,10 @@ class SitesWindow(QMainWindow):
             if not source_value:
                 QMessageBox.warning(
                     self,
-                    "Missing polygon",
-                    "Select a custom polygon file.",
+                    self.text("missing_polygon"),
+                    self.text(
+                        "select_custom_polygon_file"
+                    ),
                 )
 
                 return
@@ -548,15 +582,12 @@ class SitesWindow(QMainWindow):
             if not os.path.isfile(polygon_file):
                 QMessageBox.warning(
                     self,
-                    "Polygon not found",
-                    (
-                        "The selected polygon source "
-                        "does not exist:\n\n"
-                        f"{polygon_file}"
+                    self.text("polygon_not_found"),
+                    self.text(
+                        "polygon_not_found_message",
+                        path=polygon_file,
                     ),
                 )
-
-                return
 
                 return
 
@@ -572,10 +603,10 @@ class SitesWindow(QMainWindow):
         if not os.path.isfile(launcher_path):
             QMessageBox.critical(
                 self,
-                "Launcher missing",
-                (
-                    "The analysis launcher was not found:\n"
-                    f"{launcher_path}"
+                self.text("launcher_missing"),
+                self.text(
+                    "launcher_missing_message",
+                    path=launcher_path,
                 ),
             )
 
@@ -855,14 +886,12 @@ class SitesWindow(QMainWindow):
                 lambda area=area_ha: (
                     QMessageBox.warning(
                         self,
-                        "Large analysis area",
-                        (
-                            "The selected project area is "
-                            f"{area:,.2f} hectares.\n\n"
-                            "Areas larger than 500 hectares "
-                            "can take several minutes to "
-                            "analyse, depending on the "
-                            "computer setup."
+                        self.text(
+                            "large_analysis_area"
+                        ),
+                        self.text(
+                            "large_analysis_area_message",
+                            area=f"{area:,.2f}",
                         ),
                     )
                 ),
@@ -1190,7 +1219,9 @@ class SitesWindow(QMainWindow):
         """
 
         self.status_label.setText(
-            "Analysis running…"
+            self.text(
+                "analysis_running"
+            )
         )
 
     def analysis_finished(
@@ -1216,11 +1247,15 @@ class SitesWindow(QMainWindow):
 
         if self.cancel_requested:
             self.status_label.setText(
-                "Analysis cancelled"
+                self.text(
+                    "analysis_cancelled"
+                )
             )
 
             self.progress_step_label.setText(
-                "Removing incomplete analysis files"
+                self.text(
+                    "removing_incomplete_files"
+                )
             )
 
             self.log_output.append(
@@ -1241,11 +1276,15 @@ class SitesWindow(QMainWindow):
 
         if exit_code == 0:
             self.status_label.setText(
-                "Analysis completed successfully"
+                self.text(
+                    "analysis_completed"
+                )
             )
 
             self.progress_step_label.setText(
-                "Opening the completed project"
+                self.text(
+                    "opening_completed_project"
+                )
             )
 
             self.log_output.append(
@@ -1265,11 +1304,16 @@ class SitesWindow(QMainWindow):
             return
 
         self.status_label.setText(
-            "Analysis failed"
+            self.text(
+                "analysis_failed"
+            )
         )
 
         self.progress_step_label.setText(
-            f"Analysis stopped with exit code {exit_code}"
+            self.text(
+                "analysis_stopped_exit_code",
+                exit_code=exit_code,
+            )
         )
 
         self.log_output.append(
@@ -1302,7 +1346,7 @@ class SitesWindow(QMainWindow):
         self.progress_bar.setValue(0)
 
         self.progress_bar.setFormat(
-            "Process error"
+            self.text("process_error")
         )
 
         self.details_button.setChecked(
@@ -1313,12 +1357,15 @@ class SitesWindow(QMainWindow):
         self.cancel_button.setEnabled(False)
 
         self.status_label.setText(
-            "Process error"
+            self.text("process_error")
         )
 
         self.log_output.append(
-            "\nProcess error: "
-            f"{process_error}"
+            "\n"
+            + self.text(
+                "process_error_message",
+                error=process_error,
+            )
         )
 
     def remove_cancelled_analysis(
@@ -1400,13 +1447,11 @@ class SitesWindow(QMainWindow):
 
             QMessageBox.warning(
                 self,
-                "Cleanup incomplete",
-                (
-                    "The analysis was cancelled, but its "
-                    "temporary output folder could not be "
-                    "removed:\n\n"
-                    f"{run_folder}\n\n"
-                    f"{error}"
+                self.text("cleanup_incomplete"),
+                self.text(
+                    "cleanup_incomplete_message",
+                    path=run_folder,
+                    error=error,
                 ),
             )
 
@@ -1426,11 +1471,9 @@ class SitesWindow(QMainWindow):
 
         answer = QMessageBox.question(
             self,
-            "Cancel analysis",
-            (
-                "Stop the running analysis?\n\n"
-                "Files created by this incomplete "
-                "analysis will be removed."
+            self.text("cancel_analysis"),
+            self.text(
+                "cancel_analysis_message"
             ),
             QMessageBox.Yes
             | QMessageBox.No,
@@ -1447,11 +1490,15 @@ class SitesWindow(QMainWindow):
         )
 
         self.status_label.setText(
-            "Cancelling analysis…"
+            self.text(
+                "cancelling_analysis"
+            )
         )
 
         self.progress_step_label.setText(
-            "Stopping analysis processes"
+            self.text(
+                "stopping_analysis_processes"
+            )
         )
 
         QProcess.startDetached(
@@ -1471,7 +1518,7 @@ def main():
     )
 
     app.setApplicationName(
-        "Sites"
+        "Sovra"
     )
 
     window = SitesWindow()

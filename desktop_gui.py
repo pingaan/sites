@@ -4,6 +4,9 @@ import sys
 import shutil
 import time
 
+from scripts.translations import (
+    ui_text,
+)
 from datetime import datetime
 from pathlib import Path
 from qgis.PyQt.QtPrintSupport import (
@@ -93,6 +96,7 @@ from qgis.core import (
 )
 
 from gui import SitesWindow as AnalysisWindow
+from scripts.options_dialog import OptionsDialog
 
 
 BASEMAPS = {
@@ -857,7 +861,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.setWindowTitle(
-            "Sites — Renewable Energy Site Analysis"
+            self.text(
+                "application_title"
+            )
         )
 
         self.resize(
@@ -871,7 +877,6 @@ class SitesDesktop(QMainWindow):
         self.create_information_panel()
         self.create_overview_panel()
         self.create_actions()
-        self.create_language_actions()
         self.create_menus()
         self.create_toolbars()
         self.create_status_bar()
@@ -883,6 +888,21 @@ class SitesDesktop(QMainWindow):
         QTimer.singleShot(
             750,
             self.check_for_stale_projects,
+        )
+
+    def text(
+        self,
+        key,
+        **values,
+    ):
+        """
+        Return interface text in the global language.
+        """
+
+        return ui_text(
+            self.language_code,
+            key,
+            **values,
         )
 
     # ---------------------------------------------------------
@@ -934,12 +954,16 @@ class SitesDesktop(QMainWindow):
 
         self.central_tabs.addTab(
             self.map_canvas,
-            "Map",
+            self.text(
+                "map"
+            ),
         )
 
         self.central_tabs.addTab(
             self.project_report_view,
-            "Info",
+            self.text(
+                "info"
+            ),
         )
 
         self.setCentralWidget(
@@ -996,7 +1020,9 @@ class SitesDesktop(QMainWindow):
 
     def create_layer_panel(self):
         self.layer_dock = QDockWidget(
-            "Layers",
+            self.text(
+                "layers"
+            ),
             self,
         )
 
@@ -1043,7 +1069,9 @@ class SitesDesktop(QMainWindow):
 
     def create_projects_panel(self):
         self.projects_dock = QDockWidget(
-            "Projects",
+            self.text(
+                "projects"
+            ),
             self,
         )
 
@@ -1072,7 +1100,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.open_local_project_action = QAction(
-            "Open",
+            self.text(
+                "open"
+            ),
             self.projects_tree,
         )
 
@@ -1085,7 +1115,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.open_project_location_action = QAction(
-            "Open location",
+            self.text(
+                "open_location"
+            ),
             self.projects_tree,
         )
 
@@ -1110,7 +1142,9 @@ class SitesDesktop(QMainWindow):
         separator_action.setSeparator(True)
 
         self.rename_project_action = QAction(
-            "Rename selected project or folder",
+            self.text(
+                "rename_project_or_folder"
+            ),
             self.projects_tree,
         )
 
@@ -1127,7 +1161,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.delete_projects_action = QAction(
-            "Delete selected local projects",
+            self.text(
+                "delete_local_projects"
+            ),
             self.projects_tree,
         )
 
@@ -1319,7 +1355,10 @@ class SitesDesktop(QMainWindow):
             )
 
             preview_lines.append(
-                f"• …and {remaining_count} more"
+                self.text(
+                    "old_projects_more",
+                    count=remaining_count,
+                )
             )
 
         project_list = "\n".join(
@@ -1328,19 +1367,16 @@ class SitesDesktop(QMainWindow):
 
         answer = QMessageBox.question(
             self,
-            "Old local projects",
-            (
-                f"{len(stale_directories)} local "
-                "project run(s) have not been updated "
-                "during the last 30 days:\n\n"
-                f"{project_list}\n\n"
-                "Remove these local project runs?\n\n"
-                "This permanently deletes their local "
-                "folders and generated analysis files."
+            self.text(
+                "old_projects_found"
+            ),
+            self.text(
+                "old_projects_message",
+                projects=project_list,
             ),
             QMessageBox.Yes
             | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.Yes,
         )
 
         if answer != QMessageBox.Yes:
@@ -1396,12 +1432,13 @@ class SitesDesktop(QMainWindow):
 
             QMessageBox.warning(
                 self,
-                "Project cleanup incomplete",
-                (
-                    f"Removed {removed_count} old "
-                    "project run(s).\n\n"
-                    "Some folders could not be removed:"
-                    f"\n\n{error_preview}"
+                self.text(
+                    "project_cleanup_incomplete"
+                ),
+                self.text(
+                    "project_cleanup_incomplete_message",
+                    count=removed_count,
+                    errors=error_preview,
                 ),
             )
 
@@ -1409,10 +1446,12 @@ class SitesDesktop(QMainWindow):
 
         QMessageBox.information(
             self,
-            "Project cleanup completed",
-            (
-                f"Removed {removed_count} old local "
-                "project run(s)."
+            self.text(
+                "project_cleanup_completed"
+            ),
+            self.text(
+                "project_cleanup_completed_message",
+                count=removed_count,
             ),
         )
 
@@ -1422,7 +1461,9 @@ class SitesDesktop(QMainWindow):
         if not self.projects_root.is_dir():
             unavailable_item = QTreeWidgetItem(
                 [
-                    "No local projects found",
+                    self.text(
+                        "no_local_projects_found"
+                    ),
                 ]
             )
 
@@ -1510,7 +1551,9 @@ class SitesDesktop(QMainWindow):
         if self.projects_tree.topLevelItemCount() == 0:
             unavailable_item = QTreeWidgetItem(
                 [
-                    "No local projects found",
+                    self.text(
+                        "no_local_projects_found"
+                    ),
                 ]
             )
 
@@ -1533,8 +1576,12 @@ class SitesDesktop(QMainWindow):
         if len(selected_items) != 1:
             QMessageBox.information(
                 self,
-                "Open project",
-                "Select one project or project folder.",
+                self.text(
+                    "open_location_title"
+                ),
+                self.text(
+                    "select_one_project_or_folder"
+                ),
             )
 
             return
@@ -1562,10 +1609,11 @@ class SitesDesktop(QMainWindow):
         if not project_path:
             QMessageBox.information(
                 self,
-                "Open project",
-                (
-                    "The selected folder does not contain "
-                    "a QGIS project."
+                self.text(
+                    "open_project_title"
+                ),
+                self.text(
+                    "folder_has_no_qgis_project"
                 ),
             )
 
@@ -1574,11 +1622,12 @@ class SitesDesktop(QMainWindow):
         if not Path(project_path).is_file():
             QMessageBox.warning(
                 self,
-                "Project missing",
-                (
-                    "The selected QGIS project no longer "
-                    "exists:\n\n"
-                    f"{project_path}"
+                self.text(
+                    "project_missing"
+                ),
+                self.text(
+                    "project_missing_message",
+                    path=project_path,
                 ),
             )
 
@@ -1603,8 +1652,10 @@ class SitesDesktop(QMainWindow):
         if len(selected_items) != 1:
             QMessageBox.information(
                 self,
-                "Open location",
-                "Select one project or project folder.",
+                self.text("open_location_title"),
+                self.text(
+                    "select_one_project_or_folder"
+                ),
             )
 
             return
@@ -1619,10 +1670,11 @@ class SitesDesktop(QMainWindow):
         if not directory_path:
             QMessageBox.information(
                 self,
-                "Open location",
-                (
-                    "No local folder is associated with "
-                    "the selected item."
+                self.text(
+                    "open_location_title"
+                ),
+                self.text(
+                    "no_local_folder_associated"
                 ),
             )
 
@@ -1635,11 +1687,12 @@ class SitesDesktop(QMainWindow):
         if not directory.is_dir():
             QMessageBox.warning(
                 self,
-                "Folder missing",
-                (
-                    "The selected folder no longer "
-                    "exists:\n\n"
-                    f"{directory}"
+                self.text(
+                    "folder_missing"
+                ),
+                self.text(
+                    "folder_missing_message",
+                    path=directory,
                 ),
             )
 
@@ -1656,11 +1709,12 @@ class SitesDesktop(QMainWindow):
         if not opened:
             QMessageBox.warning(
                 self,
-                "Open location",
-                (
-                    "The operating system could not open "
-                    "the selected folder:\n\n"
-                    f"{directory}"
+                self.text(
+                    "open_location_title"
+                ),
+                self.text(
+                    "open_location_failed_message",
+                    path=directory,
                 ),
             )
 
@@ -1693,10 +1747,11 @@ class SitesDesktop(QMainWindow):
         if len(selected_items) != 1:
             QMessageBox.information(
                 self,
-                "Select one item",
-                (
-                    "Select exactly one project or folder "
-                    "to rename."
+                self.text(
+                    "select_one_item"
+                ),
+                self.text(
+                    "select_one_item_to_rename"
                 ),
             )
             return
@@ -1903,10 +1958,11 @@ class SitesDesktop(QMainWindow):
         if not filtered_paths:
             QMessageBox.information(
                 self,
-                "No projects selected",
-                (
-                    "Select one or more projects or "
-                    "analysis runs first."
+                self.text(
+                    "no_projects_selected"
+                ),
+                self.text(
+                    "select_projects_before_deletion"
                 ),
             )
             return
@@ -1925,11 +1981,12 @@ class SitesDesktop(QMainWindow):
             ):
                 QMessageBox.critical(
                     self,
-                    "Unsafe deletion prevented",
-                    (
-                        "Sites refused to delete a path "
-                        "outside the local Projects folder:\n\n"
-                        f"{deletion_path}"
+                    self.text(
+                        "unsafe_deletion_prevented"
+                    ),
+                    self.text(
+                        "unsafe_deletion_message",
+                        path=deletion_path,
                     ),
                 )
                 return
@@ -1939,21 +1996,18 @@ class SitesDesktop(QMainWindow):
             )
 
         names = "\n".join(
-            f"• {path.name}"
+            f"- {path.name}"
             for path in safe_paths
         )
 
         answer = QMessageBox.warning(
             self,
-            "Delete local projects?",
-            (
-                "The following local project data will "
-                "be permanently deleted:\n\n"
-                f"{names}\n\n"
-                "This includes the project report, "
-                "GeoPackage and other local analysis "
-                "outputs.\n\n"
-                "Are you certain?"
+            self.text(
+                "delete_local_projects_title"
+            ),
+            self.text(
+                "delete_local_projects_message",
+                names=names,
             ),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
@@ -1979,17 +2033,22 @@ class SitesDesktop(QMainWindow):
         if deletion_errors:
             QMessageBox.critical(
                 self,
-                "Deletion incomplete",
-                (
-                    "Some selected projects could not "
-                    "be deleted:\n\n"
-                    + "\n\n".join(deletion_errors)
+                self.text(
+                    "deletion_incomplete"
+                ),
+                self.text(
+                    "deletion_incomplete_message",
+                    errors="\n\n".join(
+                        deletion_errors
+                    ),
                 ),
             )
             return
 
         self.status_message.setText(
-            "Selected local projects deleted"
+            self.text(
+                "selected_local_projects_deleted"
+            )
         )
 
     # ---------------------------------------------------------
@@ -1997,8 +2056,11 @@ class SitesDesktop(QMainWindow):
     # ---------------------------------------------------------
 
     def create_information_panel(self):
+
         self.information_dock = QDockWidget(
-            "Information",
+            self.text(
+                "information"
+            ),
             self,
         )
 
@@ -2042,12 +2104,16 @@ class SitesDesktop(QMainWindow):
 
         self.information_tabs.addTab(
             self.feature_table,
-            "Feature information",
+            self.text(
+                "feature_information"
+            ),
         )
 
         self.information_tabs.addTab(
             self.layer_table,
-            "Layer information",
+            self.text(
+                "layer_information"
+            ),
         )
 
         self.information_dock.setWidget(
@@ -2065,7 +2131,9 @@ class SitesDesktop(QMainWindow):
 
     def create_overview_panel(self):
         self.overview_dock = QDockWidget(
-            "Country overview",
+            self.text(
+                "country_overview"
+            ),
             self,
         )
 
@@ -2087,11 +2155,34 @@ class SitesDesktop(QMainWindow):
     # ---------------------------------------------------------
 
     def create_actions(self):
+
+        self.options_action = QAction(
+            QgsApplication.getThemeIcon(
+                "/mActionOptions.svg"
+            ),
+            self.text(
+                "options"
+            ),
+            self,
+        )
+
+        self.options_action.setToolTip(
+            self.text(
+                "configure_sovra"
+            )
+        )
+
+        self.options_action.triggered.connect(
+            self.open_options
+        )
+
         self.open_project_action = QAction(
             QgsApplication.getThemeIcon(
                 "/mActionFileOpen.svg"
             ),
-            "Open project…",
+            self.text(
+                "open_project"
+            ),
             self,
         )
 
@@ -2103,7 +2194,9 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionFileSave.svg"
             ),
-            "Save project",
+            self.text(
+                "save_project"
+            ),
             self,
         )
 
@@ -2115,7 +2208,9 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionFilePrint.svg"
             ),
-            "Print project…",
+            self.text(
+                "print_project"
+            ),
             self,
         )
 
@@ -2124,7 +2219,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.print_project_action.setToolTip(
-            "Print a layout from the current project"
+            self.text(
+                "print_project_tooltip"
+            )
         )
 
         self.print_project_action.triggered.connect(
@@ -2142,12 +2239,16 @@ class SitesDesktop(QMainWindow):
 
         self.export_solar_action = QAction(
             export_icon,
-            "Export eligible solar area…",
+            self.text(
+                "export_solar_area"
+            ),
             self,
         )
 
         self.export_solar_action.setToolTip(
-            "Export the eligible solar area as a GeoPackage"
+            self.text(
+                "export_solar_area_tooltip"
+            )
         )
 
         self.export_solar_action.triggered.connect(
@@ -2158,12 +2259,16 @@ class SitesDesktop(QMainWindow):
 
         self.export_wind_action = QAction(
             export_icon,
-            "Export eligible wind area…",
+            self.text(
+                "export_wind_area"
+            ),
             self,
         )
 
         self.export_wind_action.setToolTip(
-            "Export the eligible wind area as a GeoPackage"
+            self.text(
+                "export_wind_area_tooltip"
+            )
         )
 
         self.export_wind_action.triggered.connect(
@@ -2173,7 +2278,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.exit_action = QAction(
-            "Exit",
+            self.text(
+                "exit"
+            ),
             self,
         )
 
@@ -2181,20 +2288,28 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionZoomFullExtent.svg"
             ),
-            "Full extent",
+            self.text(
+                "full_extent"
+            ),
             self,
         )
 
         self.open_project_action.setToolTip(
-            "Open a QGIS project"
+            self.text(
+                "open_qgis_project_tooltip"
+            )
         )
 
         self.save_project_action.setToolTip(
-            "Save the current QGIS project"
+            self.text(
+                "save_project_tooltip"
+            )
         )
 
         self.full_extent_action.setToolTip(
-            "Zoom to the full extent of project data"
+            self.text(
+                "full_extent_tooltip"
+            )
         )
 
         self.basemap_action_group = QActionGroup(
@@ -2235,7 +2350,9 @@ class SitesDesktop(QMainWindow):
         ].setChecked(True)
 
         self.about_action = QAction(
-            "About Sites",
+            self.text(
+                "about_sovra"
+            ),
             self,
         )
 
@@ -2255,7 +2372,9 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionPan.svg"
             ),
-            "Pan map",
+            self.text(
+                "pan_map"
+            ),
             self,
         )
 
@@ -2264,14 +2383,18 @@ class SitesDesktop(QMainWindow):
         )
 
         self.pan_action.setToolTip(
-            "Move around the map"
+            self.text(
+                "pan_map_tooltip"
+            )
         )
 
         self.identify_feature_action = QAction(
             QgsApplication.getThemeIcon(
                 "/mActionIdentify.svg"
             ),
-            "Identify feature",
+            self.text(
+                "identify_feature"
+            ),
             self,
         )
 
@@ -2280,7 +2403,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.identify_feature_action.setToolTip(
-            "Click a feature in the selected layer"
+            self.text(
+                "identify_feature_tooltip"
+            )
         )
 
         self.identify_feature_action.setEnabled(
@@ -2291,7 +2416,9 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionMeasure.svg"
             ),
-            "Measure distance",
+            self.text(
+                "measure_distance"
+            ),
             self,
         )
 
@@ -2300,7 +2427,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.measure_distance_action.setToolTip(
-            "Measure a distance on the map"
+            self.text(
+                "measure_distance_tooltip"
+            )
         )
 
         self.measure_distance_action.triggered.connect(
@@ -2311,7 +2440,9 @@ class SitesDesktop(QMainWindow):
             QgsApplication.getThemeIcon(
                 "/mActionMeasureArea.svg"
             ),
-            "Measure area",
+            self.text(
+                "measure_area"
+            ),
             self,
         )
 
@@ -2320,7 +2451,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.measure_area_action.setToolTip(
-            "Measure an area on the map"
+            self.text(
+                "measure_area_tooltip"
+            )
         )
 
         self.measure_area_action.triggered.connect(
@@ -2463,9 +2596,59 @@ class SitesDesktop(QMainWindow):
             f"{language_names[language_code]}"
         )
 
+    def open_options(self):
+        """
+        Open the global Sovra options.
+        """
+
+        dialog = OptionsDialog(
+            current_language=self.language_code,
+            current_country=(
+                self.country_combo.currentData()
+            ),
+            parent=self,
+        )
+
+        if not dialog.exec_():
+            return
+
+        selected_language = (
+            dialog.selected_language()
+        )
+
+        if (
+            selected_language
+            == self.language_code
+        ):
+            return
+
+        self.set_application_language(
+            selected_language
+        )
+
+        answer = QMessageBox.question(
+            self,
+            ui_text(
+                selected_language,
+                "restart_required",
+            ),
+            ui_text(
+                selected_language,
+                "restart_required_message",
+            ),
+            QMessageBox.Yes
+            | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+
+        if answer == QMessageBox.Yes:
+            self.close()
+
     def create_menus(self):
         file_menu = self.menuBar().addMenu(
-            "&File"
+            self.text(
+                "menu_file"
+            )
         )
 
         file_menu.addAction(
@@ -2483,11 +2666,15 @@ class SitesDesktop(QMainWindow):
         )
 
         self.menuBar().addMenu(
-            "&Edit"
+            self.text(
+                "menu_edit"
+            )
         )
 
         view_menu = self.menuBar().addMenu(
-            "&View"
+            self.text(
+                "menu_view"
+            )
         )
 
         view_menu.addAction(
@@ -2505,7 +2692,9 @@ class SitesDesktop(QMainWindow):
         view_menu.addSeparator()
 
         self.basemap_menu = view_menu.addMenu(
-            "Basemap"
+            self.text(
+                "basemap"
+            )
         )
 
         for action in self.basemap_actions.values():
@@ -2514,30 +2703,25 @@ class SitesDesktop(QMainWindow):
             )
 
         settings_menu = self.menuBar().addMenu(
-            "&Settings"
-        )
-
-        language_menu = settings_menu.addMenu(
-            "Language"
-        )
-
-        for language_code in (
-            "en",
-            "sv",
-            "fi",
-        ):
-            language_menu.addAction(
-                self.language_actions[
-                    language_code
-                ]
+            self.text(
+                "menu_settings"
             )
+        )
+
+        settings_menu.addAction(
+            self.options_action
+        )
 
         analysis_menu = self.menuBar().addMenu(
-            "&Analysis"
+            self.text(
+                "menu_analysis"
+            )
         )
 
         self.start_analysis_action = QAction(
-            "Start analysis",
+            self.text(
+                "start_analysis"
+            ),
             self,
         )
 
@@ -2550,7 +2734,9 @@ class SitesDesktop(QMainWindow):
         )
 
         help_menu = self.menuBar().addMenu(
-            "&Help"
+            self.text(
+                "menu_help"
+            )
         )
 
         help_menu.addAction(
@@ -2626,12 +2812,16 @@ class SitesDesktop(QMainWindow):
 
         definitions = {
             "solar": {
-                "title": "eligible solar area",
+                "title": self.text(
+                    "eligible_solar_area_name"
+                ),
                 "filename": "eligible_solar_area.gpkg",
                 "layer_name": "eligible_solar_area",
             },
             "wind": {
-                "title": "eligible wind area",
+                "title": self.text(
+                    "eligible_wind_area_name"
+                ),
                 "filename": "eligible_wind_area.gpkg",
                 "layer_name": "eligible_wind_area",
             },
@@ -2651,10 +2841,12 @@ class SitesDesktop(QMainWindow):
         if layer is None or not layer.isValid():
             QMessageBox.warning(
                 self,
-                "Analysis area unavailable",
-                (
-                    f"The {definition['title']} could not "
-                    "be found in the loaded project."
+                self.text(
+                    "analysis_area_unavailable"
+                ),
+                self.text(
+                    "analysis_area_not_found",
+                    area=definition["title"],
                 ),
             )
             return
@@ -2677,7 +2869,10 @@ class SitesDesktop(QMainWindow):
 
         output_path, _ = QFileDialog.getSaveFileName(
             self,
-            f"Export {definition['title']}",
+            self.text(
+                "export_area_dialog",
+                area=definition["title"],
+            ),
             suggested_path,
             "GeoPackage (*.gpkg)",
         )
@@ -2731,27 +2926,34 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.critical(
                 self,
-                "Export failed",
-                (
-                    f"The {definition['title']} could "
-                    "not be exported:\n\n"
-                    f"{writer_result[1]}"
+                self.text(
+                    "export_failed"
+                ),
+                self.text(
+                    "area_export_failed",
+                    area=definition["title"],
+                    error=writer_result[1],
                 ),
             )
             return
 
         QMessageBox.information(
             self,
-            "Export completed",
-            (
-                f"The {definition['title']} was exported "
-                f"successfully:\n\n{output_path}"
+            self.text(
+                "export_completed"
+            ),
+            self.text(
+                "area_export_completed",
+                area=definition["title"],
+                path=output_path,
             ),
         )
 
     def create_toolbars(self):
         map_toolbar = self.addToolBar(
-            "Map navigation"
+            self.text(
+                "map_navigation"
+            )
         )
 
         map_toolbar.setObjectName(
@@ -2811,11 +3013,15 @@ class SitesDesktop(QMainWindow):
         )
 
         self.export_area_button.setText(
-            "Export area"
+            self.text(
+                "export_area"
+            )
         )
 
         self.export_area_button.setToolTip(
-            "Export an eligible analysis area"
+            self.text(
+                "export_area_tooltip"
+            )
         )
 
         self.export_area_button.setToolButtonStyle(
@@ -2859,8 +3065,10 @@ class SitesDesktop(QMainWindow):
             basemap_icon
         )
 
-        self.basemap_button.setText(
-            "OpenStreetMap"
+        self.basemap_button.setToolTip(
+            self.text(
+                "select_background_map"
+            )
         )
 
         self.basemap_button.setToolTip(
@@ -2884,7 +3092,9 @@ class SitesDesktop(QMainWindow):
         )
 
         analysis_toolbar = self.addToolBar(
-            "Analysis"
+            self.text(
+                "analysis"
+            )
         )
 
         analysis_toolbar.setObjectName(
@@ -2892,18 +3102,22 @@ class SitesDesktop(QMainWindow):
         )
 
         analysis_toolbar.addWidget(
-            QLabel("Country:")
+            QLabel(
+                self.text(
+                    "country_label"
+                )
+            )
         )
 
         self.country_combo = QComboBox()
 
         self.country_combo.addItem(
-            "Sweden",
+            self.text("country_sweden"),
             "SE",
         )
 
         self.country_combo.addItem(
-            "Finland",
+            self.text("country_finland"),
             "FI",
         )
 
@@ -2916,17 +3130,17 @@ class SitesDesktop(QMainWindow):
         self.source_combo = QComboBox()
 
         self.source_combo.addItem(
-            "Estate",
+            self.text("source_estate"),
             "estate",
         )
 
         self.source_combo.addItem(
-            "Predefined area",
+            self.text("source_predefined_area"),
             "custom_polygon",
         )
 
         self.source_combo.addItem(
-            "Draw polygon",
+            self.text("source_draw_area"),
             "draw_polygon",
         )
 
@@ -2963,7 +3177,9 @@ class SitesDesktop(QMainWindow):
         analysis_toolbar.addSeparator()
 
         self.run_button = QPushButton(
-            "Start analysis"
+            self.text(
+                "start_analysis"
+            )
         )
 
         analysis_toolbar.addWidget(
@@ -3215,10 +3431,11 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.information(
                 self,
-                "Select a vector layer",
-                (
-                    "Select a vector layer in the Layers "
-                    "pane before using the identify tool."
+                self.text(
+                    "select_vector_layer"
+                ),
+                self.text(
+                    "select_vector_layer_before_identify"
                 ),
             )
 
@@ -3852,10 +4069,9 @@ class SitesDesktop(QMainWindow):
         )
 
         self.status_message.setText(
-            "Draw the analysis polygon: "
-            "left-click to add points, "
-            "right-click to finish, "
-            "or press Escape to cancel."
+            self.text(
+                "draw_polygon_instructions"
+            )
         )
 
     def cancel_polygon_drawing(self):
@@ -3864,26 +4080,32 @@ class SitesDesktop(QMainWindow):
         self.activate_pan_tool()
 
         self.status_message.setText(
-            "Polygon drawing cancelled."
+            self.text(
+                "polygon_drawing_cancelled"
+            )
         )
 
     def finish_drawn_polygon(self, geometry):
         if geometry is None or geometry.isEmpty():
             QMessageBox.warning(
                 self,
-                "Invalid polygon",
-                "The drawn polygon contains no geometry.",
+                self.text(
+                    "invalid_polygon"
+                ),
+                self.text(
+                    "drawn_polygon_has_no_geometry"
+                ),
             )
             return
 
         if not geometry.isGeosValid():
             QMessageBox.warning(
                 self,
-                "Invalid polygon",
-                (
-                    "The drawn polygon is not geometrically "
-                    "valid. Check that its edges do not "
-                    "cross and draw it again."
+                self.text(
+                    "invalid_polygon"
+                ),
+                self.text(
+                    "drawn_polygon_invalid"
                 ),
             )
 
@@ -3899,10 +4121,11 @@ class SitesDesktop(QMainWindow):
         if not map_crs.isValid():
             QMessageBox.warning(
                 self,
-                "Invalid map CRS",
-                (
-                    "The map does not have a valid "
-                    "coordinate reference system."
+                self.text(
+                    "invalid_map_crs"
+                ),
+                self.text(
+                    "invalid_map_crs_message"
                 ),
             )
             return
@@ -3912,7 +4135,9 @@ class SitesDesktop(QMainWindow):
                 "Polygon?crs="
                 f"{map_crs.authid()}"
             ),
-            "Drawn analysis polygon",
+            self.text(
+                "drawn_analysis_polygon"
+            ),
             "memory",
         )
 
@@ -3924,10 +4149,11 @@ class SitesDesktop(QMainWindow):
         if not provider.addFeature(feature):
             QMessageBox.critical(
                 self,
-                "Polygon error",
-                (
-                    "The drawn polygon could not be "
-                    "added to the temporary layer."
+                self.text(
+                    "polygon_error"
+                ),
+                self.text(
+                    "polygon_temporary_layer_error"
                 ),
             )
             return
@@ -3994,11 +4220,12 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.critical(
                 self,
-                "Polygon save error",
-                (
-                    "The drawn polygon could not be "
-                    "saved:\n\n"
-                    f"{writer_result[1]}"
+                self.text(
+                    "polygon_save_error"
+                ),
+                self.text(
+                    "polygon_save_error_message",
+                    error=writer_result[1],
                 ),
             )
             return
@@ -4010,17 +4237,20 @@ class SitesDesktop(QMainWindow):
 
         preview_layer = QgsVectorLayer(
             polygon_uri,
-            "Drawn analysis polygon",
+            self.text(
+                "drawn_analysis_polygon"
+            ),
             "ogr",
         )
 
         if not preview_layer.isValid():
             QMessageBox.critical(
                 self,
-                "Polygon preview error",
-                (
-                    "The saved polygon could not be "
-                    "loaded back into QGIS."
+                self.text(
+                    "polygon_preview_error"
+                ),
+                self.text(
+                    "polygon_preview_error_message"
                 ),
             )
             return
@@ -4080,7 +4310,9 @@ class SitesDesktop(QMainWindow):
         self.map_canvas.refresh()
 
         self.status_message.setText(
-            "Drawn analysis polygon is ready."
+            self.text(
+                "drawn_polygon_ready"
+            )
         )
 
     def select_custom_polygon(self):
@@ -4093,11 +4325,12 @@ class SitesDesktop(QMainWindow):
 
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select analysis polygon",
+            self.text(
+                "select_analysis_polygon"
+            ),
             os.path.expanduser("~"),
             file_filters,
         )
-
         if not file_path:
             return
 
@@ -4110,12 +4343,13 @@ class SitesDesktop(QMainWindow):
         except Exception as error:
             QMessageBox.warning(
                 self,
-                "Unable to inspect data source",
-                (
-                    "QGIS could not inspect the selected "
-                    "data source:\n\n"
-                    f"{file_path}\n\n"
-                    f"{error}"
+                self.text(
+                    "unable_to_inspect_data_source"
+                ),
+                self.text(
+                    "unable_to_inspect_data_source_message",
+                    path=file_path,
+                    error=error,
                 ),
             )
             return
@@ -4169,12 +4403,11 @@ class SitesDesktop(QMainWindow):
         if not polygon_candidates:
             QMessageBox.warning(
                 self,
-                "Polygon layer required",
-                (
-                    "The selected data source does not "
-                    "contain a readable polygon layer.\n\n"
-                    "The analysis area must be supplied as "
-                    "polygon or multipolygon vector data."
+                self.text(
+                    "polygon_layer_required"
+                ),
+                self.text(
+                    "polygon_layer_required_message"
                 ),
             )
             return
@@ -4190,10 +4423,11 @@ class SitesDesktop(QMainWindow):
             selected_name, accepted = (
                 QInputDialog.getItem(
                     self,
-                    "Select polygon layer",
-                    (
-                        "This data source contains more "
-                        "than one polygon layer:"
+                    self.text(
+                        "select_polygon_layer"
+                    ),
+                    self.text(
+                        "multiple_polygon_layers"
                     ),
                     candidate_names,
                     0,
@@ -4223,7 +4457,9 @@ class SitesDesktop(QMainWindow):
             polygon_uri = details.uri()
 
         preview_layer.setName(
-            "Analysis polygon preview"
+            self.text(
+                "analysis_polygon_preview"
+            )
         )
 
         preview_symbol = QgsFillSymbol.createSimple(
@@ -4272,7 +4508,9 @@ class SitesDesktop(QMainWindow):
             self.map_canvas.refresh()
 
         self.status_message.setText(
-            "Analysis polygon loaded and previewed."
+            self.text(
+                "analysis_polygon_loaded"
+            )
         )
 
     def local_project_files(self):
@@ -4717,8 +4955,10 @@ class SitesDesktop(QMainWindow):
         if not self.project.fileName():
             QMessageBox.information(
                 self,
-                "No project loaded",
-                "Load a project before printing.",
+                self.text("no_project_loaded"),
+                self.text(
+                    "load_project_before_printing"
+                ),
             )
             return
 
@@ -4731,13 +4971,11 @@ class SitesDesktop(QMainWindow):
         if not layouts:
             QMessageBox.information(
                 self,
-                "No print layout",
-                (
-                    "The current project does not contain "
-                    "a print layout yet.\n\n"
-                    "A Sovra print-layout template will "
-                    "need to be created and added to the "
-                    "generated project."
+                self.text(
+                    "no_print_layout"
+                ),
+                self.text(
+                    "no_print_layout_message"
                 ),
             )
             return
@@ -5159,8 +5397,8 @@ class SitesDesktop(QMainWindow):
         ):
             return
 
-        country_name = str(
-            country_feature["ADMIN"]
+        country_name = (
+            self.country_combo.currentText()
         )
 
         self.overview_canvas.setDestinationCrs(
@@ -5215,11 +5453,17 @@ class SitesDesktop(QMainWindow):
             self.map_canvas.refresh()
 
         self.overview_dock.setWindowTitle(
-            f"Country overview — {country_name}"
+            self.text(
+                "country_overview_named",
+                country=country_name,
+            )
         )
 
         self.status_message.setText(
-            f"Country selected: {country_name}"
+            self.text(
+                "country_selected",
+                country=country_name,
+            )
         )
 
     def initialize_overview_layers(self):

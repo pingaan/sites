@@ -1,0 +1,317 @@
+﻿
+  gui.py:62:
+> gui.py:63:        self.setWindowTitle(
+  gui.py:64:            self.text(
+  gui.py:65:                "analysis_progress_title"
+  gui.py:66:            )
+  gui.py:67:        )
+  gui.py:117:
+> gui.py:118:        heading = QLabel(
+  gui.py:119:            "Sites"
+  gui.py:120:        )
+  gui.py:121:
+  gui.py:122:        heading_font = heading.font()
+  gui.py:126:
+> gui.py:127:        subtitle = QLabel(
+  gui.py:128:            "Renewable energy site analysis"
+  gui.py:129:        )
+  gui.py:130:
+  gui.py:131:        heading.setVisible(False)
+  gui.py:137:
+> gui.py:138:        source_group = QGroupBox(
+  gui.py:139:            "Analysis source"
+  gui.py:140:        )
+  gui.py:141:
+  gui.py:142:        source_layout = QFormLayout(
+  gui.py:175:
+> gui.py:176:        self.estate_radio = QRadioButton(
+  gui.py:177:            "Estate identifier"
+  gui.py:178:        )
+  gui.py:179:
+> gui.py:180:        self.polygon_radio = QRadioButton(
+  gui.py:181:            "Custom polygon"
+  gui.py:182:        )
+  gui.py:183:
+  gui.py:184:        self.estate_radio.setChecked(True)
+  gui.py:202:
+> gui.py:203:        self.estate_input.setPlaceholderText(
+  gui.py:204:            "Example: KÄVLINGE ÅLSTORP 19:63"
+  gui.py:205:        )
+  gui.py:206:
+  gui.py:207:        source_layout.addRow(
+  gui.py:227:
+> gui.py:228:        self.browse_button = QPushButton(
+  gui.py:229:            "Browse…"
+  gui.py:230:        )
+  gui.py:231:
+  gui.py:232:        polygon_layout.addWidget(
+  gui.py:267:
+> gui.py:268:        self.start_button = QPushButton(
+  gui.py:269:            "Start analysis"
+  gui.py:270:        )
+  gui.py:271:
+  gui.py:272:        self.start_button.setMinimumHeight(
+  gui.py:277:
+> gui.py:278:        self.cancel_button = QPushButton(
+  gui.py:279:            self.text(
+  gui.py:280:                "cancel"
+  gui.py:281:            )
+  gui.py:282:        )
+  gui.py:306:
+> gui.py:307:        self.status_label = QLabel(
+  gui.py:308:            "Preparing analysis…"
+  gui.py:309:        )
+  gui.py:310:
+  gui.py:311:        self.status_label.setAlignment(
+  gui.py:335:
+> gui.py:336:        self.progress_step_label = QLabel(
+  gui.py:337:            "Preparing analysis"
+  gui.py:338:        )
+  gui.py:339:
+  gui.py:340:        self.progress_step_label.setWordWrap(
+  gui.py:351:
+> gui.py:352:        self.details_button = QPushButton(
+  gui.py:353:            self.text(
+  gui.py:354:                "show_details"
+  gui.py:355:            )
+  gui.py:356:        )
+  gui.py:374:
+> gui.py:375:        self.log_output.setPlaceholderText(
+  gui.py:376:            self.text(
+  gui.py:377:                "analysis_messages_placeholder"
+  gui.py:378:            )
+  gui.py:379:        )
+  gui.py:424:        if country_code == "FI":
+> gui.py:425:            self.estate_input.setPlaceholderText(
+  gui.py:426:                "Example: 434-415-1-226"
+  gui.py:427:            )
+  gui.py:428:
+  gui.py:429:        else:
+> gui.py:430:            self.estate_input.setPlaceholderText(
+  gui.py:431:                "Example: KÄVLINGE ÅLSTORP 19:63"
+  gui.py:432:            )
+  gui.py:433:
+  gui.py:434:    def update_source_controls(self):
+  gui.py:459:
+> gui.py:460:        file_path, _ = QFileDialog.getOpenFileName(
+  gui.py:461:            self,
+  gui.py:462:            "Select custom polygon",
+  gui.py:463:            os.path.expanduser("~"),
+  gui.py:464:            (
+  gui.py:471:        if file_path:
+> gui.py:472:            self.polygon_input.setText(
+  gui.py:473:                file_path
+  gui.py:474:            )
+  gui.py:475:
+  gui.py:476:    def toggle_details(
+  gui.py:488:        if visible:
+> gui.py:489:            self.details_button.setText(
+  gui.py:490:                self.text(
+  gui.py:491:                    "hide_details"
+  gui.py:492:                )
+  gui.py:493:            )
+  gui.py:500:        else:
+> gui.py:501:            self.details_button.setText(
+  gui.py:502:                self.text(
+  gui.py:503:                    "show_details"
+  gui.py:504:                )
+  gui.py:505:            )
+  gui.py:522:        ):
+> gui.py:523:            QMessageBox.information(
+  gui.py:524:                self,
+  gui.py:525:                "Analysis already running",
+  gui.py:526:                "An analysis is already running.",
+  gui.py:527:            )
+  gui.py:542:            if not source_value:
+> gui.py:543:                QMessageBox.warning(
+  gui.py:544:                    self,
+  gui.py:545:                    "Missing estate",
+  gui.py:546:                    "Enter an estate identifier.",
+  gui.py:547:                )
+  gui.py:558:            if not source_value:
+> gui.py:559:                QMessageBox.warning(
+  gui.py:560:                    self,
+  gui.py:561:                    "Missing polygon",
+  gui.py:562:                    "Select a custom polygon file.",
+  gui.py:563:                )
+  gui.py:572:            if not os.path.isfile(polygon_file):
+> gui.py:573:                QMessageBox.warning(
+  gui.py:574:                    self,
+  gui.py:575:                    "Polygon not found",
+  gui.py:576:                    (
+  gui.py:577:                        "The selected polygon source "
+  gui.py:596:        if not os.path.isfile(launcher_path):
+> gui.py:597:            QMessageBox.critical(
+  gui.py:598:                self,
+  gui.py:599:                "Launcher missing",
+  gui.py:600:                (
+  gui.py:601:                    "The analysis launcher was not found:\n"
+  gui.py:627:        self.log_output.append("")
+> gui.py:628:        self.status_label.setText(
+  gui.py:629:            "Starting analysis…"
+  gui.py:630:        )
+  gui.py:631:
+  gui.py:632:        self.progress_output_buffer = ""
+  gui.py:799:
+> gui.py:800:        self.progress_step_label.setText(
+  gui.py:801:            message
+  gui.py:802:        )
+  gui.py:803:
+  gui.py:804:    def update_progress_from_output(
+  gui.py:872:
+> gui.py:873:            self.progress_step_label.setText(
+  gui.py:874:                "Preparing a large analysis area"
+  gui.py:875:            )
+  gui.py:876:
+  gui.py:877:            QTimer.singleShot(
+  gui.py:879:                lambda area=area_ha: (
+> gui.py:880:                    QMessageBox.warning(
+  gui.py:881:                        self,
+  gui.py:882:                        "Large analysis area",
+  gui.py:883:                        (
+  gui.py:884:                            "The selected project area is "
+  gui.py:1215:
+> gui.py:1216:        self.status_label.setText(
+  gui.py:1217:            self.text(
+  gui.py:1218:                "analysis_running"
+  gui.py:1219:            )
+  gui.py:1220:        )
+  gui.py:1243:        if self.cancel_requested:
+> gui.py:1244:            self.status_label.setText(
+  gui.py:1245:                self.text(
+  gui.py:1246:                    "analysis_cancelled"
+  gui.py:1247:                )
+  gui.py:1248:            )
+  gui.py:1249:
+> gui.py:1250:            self.progress_step_label.setText(
+  gui.py:1251:                self.text(
+  gui.py:1252:                    "removing_incomplete_files"
+  gui.py:1253:                )
+  gui.py:1254:            )
+  gui.py:1272:        if exit_code == 0:
+> gui.py:1273:            self.status_label.setText(
+  gui.py:1274:                self.text(
+  gui.py:1275:                    "analysis_completed"
+  gui.py:1276:                )
+  gui.py:1277:            )
+  gui.py:1278:
+> gui.py:1279:            self.progress_step_label.setText(
+  gui.py:1280:                self.text(
+  gui.py:1281:                    "opening_completed_project"
+  gui.py:1282:                )
+  gui.py:1283:            )
+  gui.py:1300:
+> gui.py:1301:        self.status_label.setText(
+  gui.py:1302:            self.text(
+  gui.py:1303:                "analysis_failed"
+  gui.py:1304:            )
+  gui.py:1305:        )
+  gui.py:1306:
+> gui.py:1307:        self.progress_step_label.setText(
+  gui.py:1308:            self.text(
+  gui.py:1309:                "analysis_stopped_exit_code",
+  gui.py:1310:                exit_code=exit_code,
+  gui.py:1311:            )
+  gui.py:1353:
+> gui.py:1354:        self.status_label.setText(
+  gui.py:1355:            "Process error"
+  gui.py:1356:        )
+  gui.py:1357:
+  gui.py:1358:        self.log_output.append(
+  gui.py:1439:
+> gui.py:1440:            QMessageBox.warning(
+  gui.py:1441:                self,
+  gui.py:1442:                "Cleanup incomplete",
+  gui.py:1443:                (
+  gui.py:1444:                    "The analysis was cancelled, but its "
+  gui.py:1465:
+> gui.py:1466:        answer = QMessageBox.question(
+  gui.py:1467:            self,
+  gui.py:1468:            "Cancel analysis",
+  gui.py:1469:            (
+  gui.py:1470:                "Stop the running analysis?\n\n"
+  gui.py:1473:            ),
+> gui.py:1474:            QMessageBox.Yes
+> gui.py:1475:            | QMessageBox.No,
+> gui.py:1476:            QMessageBox.No,
+  gui.py:1477:        )
+  gui.py:1478:
+> gui.py:1479:        if answer != QMessageBox.Yes:
+  gui.py:1480:            return
+  gui.py:1481:
+  gui.py:1482:        self.cancel_requested = True
+  gui.py:1483:
+  gui.py:1487:
+> gui.py:1488:        self.status_label.setText(
+  gui.py:1489:            self.text(
+  gui.py:1490:                "cancelling_analysis"
+  gui.py:1491:            )
+  gui.py:1492:        )
+  gui.py:1493:
+> gui.py:1494:        self.progress_step_label.setText(
+  gui.py:1495:            self.text(
+  gui.py:1496:                "stopping_analysis_processes"
+  gui.py:1497:            )
+  gui.py:1498:        )
+  scripts\options_dialog.py:151:
+> scripts\options_dialog.py:152:        self.setWindowTitle(
+  scripts\options_dialog.py:153:            option_text(
+  scripts\options_dialog.py:154:                self.current_language,
+  scripts\options_dialog.py:155:                "title",
+  scripts\options_dialog.py:156:            )
+  scripts\options_dialog.py:217:
+> scripts\options_dialog.py:218:        restart_note = QLabel(
+  scripts\options_dialog.py:219:            option_text(
+  scripts\options_dialog.py:220:                self.current_language,
+  scripts\options_dialog.py:221:                "restart_note",
+  scripts\options_dialog.py:222:            )
+  scripts\options_dialog.py:232:
+> scripts\options_dialog.py:233:        self.tabs.addTab(
+  scripts\options_dialog.py:234:            general_tab,
+  scripts\options_dialog.py:235:            option_text(
+  scripts\options_dialog.py:236:                self.current_language,
+  scripts\options_dialog.py:237:                "general",
+  scripts\options_dialog.py:250:
+> scripts\options_dialog.py:251:        layer_note = QLabel(
+  scripts\options_dialog.py:252:            option_text(
+  scripts\options_dialog.py:253:                self.current_language,
+  scripts\options_dialog.py:254:                "layers_note",
+  scripts\options_dialog.py:255:            )
+  scripts\options_dialog.py:351:
+> scripts\options_dialog.py:352:        self.tabs.addTab(
+  scripts\options_dialog.py:353:            layer_tab,
+  scripts\options_dialog.py:354:            option_text(
+  scripts\options_dialog.py:355:                self.current_language,
+  scripts\options_dialog.py:356:                "layers",
+  scripts\options_dialog.py:484:
+> scripts\options_dialog.py:485:        button.setText(
+  scripts\options_dialog.py:486:            normalised_colour.name().upper()
+  scripts\options_dialog.py:487:        )
+  scripts\options_dialog.py:488:
+  scripts\options_dialog.py:489:        button.setStyleSheet(
+  scripts\options_dialog.py:702:
+> scripts\options_dialog.py:703:            info_label = QLabel(
+  scripts\options_dialog.py:704:                "ⓘ"
+  scripts\options_dialog.py:705:            )
+  scripts\options_dialog.py:706:
+  scripts\options_dialog.py:707:            info_label.setAlignment(
+  scripts\options_dialog.py:723:
+> scripts\options_dialog.py:724:            info_label.setToolTip(
+  scripts\options_dialog.py:725:                self.layer_information_tooltip(
+  scripts\options_dialog.py:726:                    layer_definition=layer_definition,
+  scripts\options_dialog.py:727:                    metadata=layer_metadata,
+  scripts\options_dialog.py:728:                    metadata_error=metadata_error,
+  scripts\options_dialog.py:741:
+> scripts\options_dialog.py:742:            name_label = QLabel(
+  scripts\options_dialog.py:743:                display_name
+  scripts\options_dialog.py:744:            )
+  scripts\options_dialog.py:745:
+  scripts\options_dialog.py:746:            self.layer_table.setCellWidget(
+  scripts\options_dialog.py:791:
+> scripts\options_dialog.py:792:            colour_button = QPushButton()
+  scripts\options_dialog.py:793:
+  scripts\options_dialog.py:794:            default_style = (
+  scripts\options_dialog.py:795:                style_resolver(layer_definition)
+  scripts\options_dialog.py:796:                if style_resolver is not None
+
+

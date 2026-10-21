@@ -830,6 +830,128 @@ def apply_country_layer_style(
         QgsSingleSymbolRenderer(symbol)
     )
 
+def apply_configured_constraint_style(
+    layer,
+    definition,
+):
+    """
+    Apply the user's hard-constraint or indicator styling.
+
+    Hard constraints use solid, opaque symbols. Indicators use
+    hatching, dashes or outlined markers depending on geometry.
+    """
+
+    treatment = definition.get(
+        "treatment",
+        "hard",
+    )
+
+    colour = QColor(
+        definition.get(
+            "colour",
+            "#d27800",
+        )
+    )
+
+    if not colour.isValid():
+        colour = QColor(
+            "#d27800"
+        )
+
+    colour.setAlpha(
+        255
+    )
+
+    colour_name = colour.name(
+        QColor.HexRgb
+    )
+
+    outline_colour = colour.darker(
+        135
+    ).name(
+        QColor.HexRgb
+    )
+
+    geometry_type = layer.geometryType()
+
+    if geometry_type == QgsWkbTypes.PolygonGeometry:
+        if treatment == "indicator":
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "color": colour_name,
+                    "style": "b_diagonal",
+                    "outline_color": colour_name,
+                    "outline_width": "0.5",
+                }
+            )
+
+        else:
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "color": colour_name,
+                    "style": "solid",
+                    "outline_color": outline_colour,
+                    "outline_width": "0.4",
+                }
+            )
+
+    elif geometry_type == QgsWkbTypes.LineGeometry:
+        line_style = (
+            "dash"
+            if treatment == "indicator"
+            else "solid"
+        )
+
+        symbol = QgsLineSymbol.createSimple(
+            {
+                "line_color": colour_name,
+                "line_width": "0.8",
+                "line_style": line_style,
+            }
+        )
+
+    elif geometry_type == QgsWkbTypes.PointGeometry:
+        if treatment == "indicator":
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": "255,255,255,0",
+                    "outline_color": colour_name,
+                    "outline_width": "0.8",
+                    "size": "3.2",
+                }
+            )
+
+        else:
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": colour_name,
+                    "outline_color": outline_colour,
+                    "outline_width": "0.4",
+                    "size": "3.2",
+                }
+            )
+
+    else:
+        return
+
+    layer.setRenderer(
+        QgsSingleSymbolRenderer(
+            symbol
+        )
+    )
+
+    layer.setCustomProperty(
+        "sovra/treatment",
+        treatment,
+    )
+
+    layer.setCustomProperty(
+        "sovra/colour",
+        colour_name,
+    )
+
 def add_country_outputs(
     map_data,
     country_layer_outputs,
@@ -930,6 +1052,11 @@ def add_country_outputs(
             layer=layer,
             style=style,
             svg_path=svg_path,
+        )
+
+        apply_configured_constraint_style(
+            layer=layer,
+            definition=definition,
         )
 
         project.addMapLayer(

@@ -1,6 +1,9 @@
 import gc
 import os
 
+from scripts.layer_settings import (
+    apply_layer_settings,
+)
 from scripts.postgis_raster import (
     download_dem_from_postgis,
 )
@@ -153,6 +156,10 @@ from scripts.site_selection import (
     calculate_estate_area,
     prepare_custom_polygon_source,
 )
+from scripts.layer_metadata import (
+    cache_needs_refresh,
+    update_layer_metadata_cache,
+)
 
 
 estate = (
@@ -227,6 +234,49 @@ def run_analysis(runtime):
     country_config = load_country_config(
         country_code=settings.country_code,
     )
+
+    if cache_needs_refresh():
+        print(
+            "Refreshing local layer metadata cache..."
+        )
+
+        try:
+            metadata_cache_path = (
+                update_layer_metadata_cache()
+            )
+
+            print(
+                "Layer metadata cache updated: "
+                f"{metadata_cache_path}"
+            )
+
+        except Exception as error:
+            print(
+                "Layer metadata cache could not be "
+                "updated; the existing local cache "
+                "will be retained."
+            )
+
+            print(
+                f"Metadata update error: {error}"
+            )
+
+    else:
+        print(
+            "Local layer metadata cache is current."
+        )
+
+    layer_definitions = apply_layer_settings(
+        country_code=settings.country_code,
+        layer_definitions=country_config.LAYERS,
+        style_resolver=getattr(
+            country_config,
+            "get_map_style",
+            None,
+        ),
+        language=settings.language,
+    )
+
     paths = get_paths()
 
     print("Starting solar site analysis...")
@@ -1409,7 +1459,10 @@ def run_analysis(runtime):
                     "key": (
                         f"country_{number:03d}"
                     ),
-                    "name": definition["name"],
+                    "name": definition.get(
+                        "display_name",
+                        definition["name"],
+                    ),
                     "path": layer_output.get(
                         "output_path"
                     ),

@@ -463,11 +463,7 @@ class SitesWindow(QMainWindow):
             self,
             self.text("select_custom_polygon"),
             os.path.expanduser("~"),
-            (
-                "Vector data "
-                "(*.gpkg *.shp *.geojson);;"
-                "All files (*.*)"
-            ),
+            self.text("vector_data_filter"),
         )
 
         if file_path:
@@ -633,7 +629,7 @@ class SitesWindow(QMainWindow):
 
         self.log_output.append("")
         self.status_label.setText(
-            "Starting analysis…"
+            self.text("starting_analysis")
         )
 
         self.progress_output_buffer = ""
@@ -646,7 +642,7 @@ class SitesWindow(QMainWindow):
         self.progress_bar.setValue(1)
 
         self.progress_bar.setFormat(
-            "%p% — Starting analysis"
+            "%p%"
         )
 
         self.start_button.setEnabled(False)
@@ -878,7 +874,9 @@ class SitesWindow(QMainWindow):
             )
 
             self.progress_step_label.setText(
-                "Preparing a large analysis area"
+                self.text(
+                    "preparing_large_analysis_area"
+                )
             )
 
             QTimer.singleShot(

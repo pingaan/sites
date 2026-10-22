@@ -32,6 +32,13 @@ from scripts.layer_metadata import (
 
 TEXT = {
     "en": {
+        "layer": "Layer",
+        "solar_distance": "Solar distance",
+        "wind_distance": "Wind distance",
+        "colour": "Colour",
+        "treatment": "Treatment",
+        "hard_constraint": "Hard constraint",
+        "indicator": "Indicator",
         "title": "Options",
         "general": "General",
         "layers": "Layer settings",
@@ -45,6 +52,13 @@ TEXT = {
         ),
     },
     "sv": {
+        "layer": "Lager",
+        "solar_distance": "Solavstånd",
+        "wind_distance": "Vindavstånd",
+        "colour": "Färg",
+        "treatment": "Hantering",
+        "hard_constraint": "Hård begränsning",
+        "indicator": "Indikator",
         "title": "Inställningar",
         "general": "Allmänt",
         "layers": "Lagerinställningar",
@@ -59,6 +73,13 @@ TEXT = {
         ),
     },
     "fi": {
+        "layer": "Taso",
+        "solar_distance": "Aurinkoetäisyys",
+        "wind_distance": "Tuulietäisyys",
+        "colour": "Väri",
+        "treatment": "Käsittely",
+        "hard_constraint": "Ehdoton rajoite",
+        "indicator": "Indikaattori",
         "title": "Asetukset",
         "general": "Yleiset",
         "layers": "Tasojen asetukset",
@@ -298,11 +319,26 @@ class OptionsDialog(QDialog):
         self.layer_table.setHorizontalHeaderLabels(
             [
                 "ⓘ",
-                "Layer",
-                "Solar distance",
-                "Wind distance",
-                "Colour",
-                "Treatment",
+                option_text(
+                    self.current_language,
+                    "layer",
+                ),
+                option_text(
+                    self.current_language,
+                    "solar_distance",
+                ),
+                option_text(
+                    self.current_language,
+                    "wind_distance",
+                ),
+                option_text(
+                    self.current_language,
+                    "colour",
+                ),
+                option_text(
+                    self.current_language,
+                    "treatment",
+                ),
             ]
         )
 
@@ -830,12 +866,18 @@ class OptionsDialog(QDialog):
             treatment_combo = QComboBox()
 
             treatment_combo.addItem(
-                "Hard constraint",
+                option_text(
+                    self.current_language,
+                    "hard_constraint",
+                ),
                 "hard",
             )
 
             treatment_combo.addItem(
-                "Indicator",
+                option_text(
+                    self.current_language,
+                    "indicator",
+                ),
                 "indicator",
             )
 

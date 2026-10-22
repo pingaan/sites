@@ -427,6 +427,480 @@ def translated_layer_name(
     )
 
 UI_TEXT = {
+    "renamed_to": {
+        "en": "Renamed to: {name}",
+        "sv": "Namn ändrat till: {name}",
+        "fi": "Uusi nimi: {name}",
+    },
+    "basemap_selected": {
+        "en": "Basemap: {name}",
+        "sv": "Bakgrundskarta: {name}",
+        "fi": "Taustakartta: {name}",
+    },
+    "project_loaded": {
+        "en": "Project loaded: {name}",
+        "sv": "Projekt inläst: {name}",
+        "fi": "Projekti ladattu: {name}",
+    },
+    "scale_value": {
+        "en": "Scale: 1:{scale}",
+        "sv": "Skala: 1:{scale}",
+        "fi": "Mittakaava: 1:{scale}",
+    },
+    "application_language_selected": {
+        "en": "Application language selected: {language}",
+        "sv": "Applikationsspråk valt: {language}",
+        "fi": "Sovelluksen kieli valittu: {language}",
+    },
+    "starting_analysis": {
+        "en": "Starting analysis…",
+        "sv": "Startar analys…",
+        "fi": "Käynnistetään analyysiä…",
+    },
+    "preparing_large_analysis_area": {
+        "en": "Preparing a large analysis area",
+        "sv": "Förbereder ett stort analysområde",
+        "fi": "Valmistellaan suurta analyysialuetta",
+    },
+    "local_projects": {
+        "en": "Local projects",
+        "sv": "Lokala projekt",
+        "fi": "Paikalliset projektit",
+    },
+    "field": {
+        "en": "Field",
+        "sv": "Fält",
+        "fi": "Kenttä",
+    },
+    "value": {
+        "en": "Value",
+        "sv": "Värde",
+        "fi": "Arvo",
+    },
+    "property": {
+        "en": "Property",
+        "sv": "Egenskap",
+        "fi": "Ominaisuus",
+    },
+    "select_background_map": {
+        "en": "Select background map",
+        "sv": "Välj bakgrundskarta",
+        "fi": "Valitse taustakartta",
+    },
+    "ready": {
+        "en": "Ready",
+        "sv": "Klar",
+        "fi": "Valmis",
+    },
+    "scale_unavailable": {
+        "en": "Scale: —",
+        "sv": "Skala: —",
+        "fi": "Mittakaava: —",
+    },
+    "select_polygon_file_placeholder": {
+        "en": "Select a polygon file…",
+        "sv": "Välj en polygonfil…",
+        "fi": "Valitse polygonitiedosto…",
+    },
+    "analysis_project_not_found": {
+        "en": (
+            "Analysis completed, but the new QGIS project "
+            "could not be located."
+        ),
+        "sv": (
+            "Analysen slutfördes, men det nya QGIS-projektet "
+            "kunde inte hittas."
+        ),
+        "fi": (
+            "Analyysi valmistui, mutta uutta QGIS-projektia "
+            "ei löytynyt."
+        ),
+    },
+    "analysis_completed_project_loaded": {
+        "en": "Analysis completed and project loaded",
+        "sv": "Analysen slutfördes och projektet lästes in",
+        "fi": "Analyysi valmistui ja projekti ladattiin",
+    },
+    "print_sovra_project": {
+        "en": "Print Sovra project",
+        "sv": "Skriv ut Sovra-projekt",
+        "fi": "Tulosta Sovra-projekti",
+    },
+    "overview_admin_field_missing": {
+        "en": (
+            "Country overview unavailable: the ADMIN field "
+            "was not found."
+        ),
+        "sv": (
+            "Landsöversikten är inte tillgänglig: fältet "
+            "ADMIN hittades inte."
+        ),
+        "fi": (
+            "Maan yleiskartta ei ole käytettävissä: "
+            "ADMIN-kenttää ei löytynyt."
+        ),
+    },
+    "overview_country_not_found": {
+        "en": (
+            "Country overview unavailable: {country} "
+            "was not found."
+        ),
+        "sv": (
+            "Landsöversikten är inte tillgänglig: {country} "
+            "hittades inte."
+        ),
+        "fi": (
+            "Maan yleiskartta ei ole käytettävissä: maata "
+            "{country} ei löytynyt."
+        ),
+    },
+    "country_map_invalid_crs": {
+        "en": "Country map unavailable: invalid CRS {crs}.",
+        "sv": (
+            "Landskartan är inte tillgänglig: ogiltigt "
+            "koordinatsystem {crs}."
+        ),
+        "fi": (
+            "Maakartta ei ole käytettävissä: virheellinen "
+            "koordinaattijärjestelmä {crs}."
+        ),
+    },
+    "overview_dataset_unavailable": {
+        "en": (
+            "Country overview unavailable: "
+            "world_countries.gpkg could not be loaded."
+        ),
+        "sv": (
+            "Landsöversikten är inte tillgänglig: "
+            "world_countries.gpkg kunde inte läsas in."
+        ),
+        "fi": (
+            "Maan yleiskartta ei ole käytettävissä: tiedostoa "
+            "world_countries.gpkg ei voitu ladata."
+        ),
+    },
+    "overview_satellite_unavailable": {
+        "en": (
+            "Country overview unavailable: satellite imagery "
+            "could not be loaded."
+        ),
+        "sv": (
+            "Landsöversikten är inte tillgänglig: "
+            "satellitbilderna kunde inte läsas in."
+        ),
+        "fi": (
+            "Maan yleiskartta ei ole käytettävissä: "
+            "satelliittikuvia ei voitu ladata."
+        ),
+    },
+    "project_country_not_found": {
+        "en": (
+            "Country overview unavailable: the project "
+            "location did not match a country."
+        ),
+        "sv": (
+            "Landsöversikten är inte tillgänglig: projektets "
+            "läge kunde inte kopplas till ett land."
+        ),
+        "fi": (
+            "Maan yleiskartta ei ole käytettävissä: projektin "
+            "sijainti ei vastannut mitään maata."
+        ),
+    },
+    "rename_prevented_title": {
+        "en": "Rename prevented",
+        "sv": "Namnändring förhindrad",
+        "fi": "Nimeäminen estettiin",
+    },
+    "rename_prevented_message": {
+        "en": (
+            "Sovra refused to rename a path outside the local "
+            "Projects folder."
+        ),
+        "sv": (
+            "Sovra vägrade att byta namn på en sökväg utanför "
+            "den lokala projektmappen."
+        ),
+        "fi": (
+            "Sovra esti projektikansion ulkopuolella olevan "
+            "polun nimeämisen uudelleen."
+        ),
+    },
+    "rename_project_title": {
+        "en": "Rename project",
+        "sv": "Byt namn på projekt",
+        "fi": "Nimeä projekti uudelleen",
+    },
+    "new_name_label": {
+        "en": "New name:",
+        "sv": "Nytt namn:",
+        "fi": "Uusi nimi:",
+    },
+    "invalid_name_title": {
+        "en": "Invalid name",
+        "sv": "Ogiltigt namn",
+        "fi": "Virheellinen nimi",
+    },
+    "name_cannot_be_empty": {
+        "en": "The name cannot be empty.",
+        "sv": "Namnet får inte vara tomt.",
+        "fi": "Nimi ei voi olla tyhjä.",
+    },
+    "invalid_folder_name_message": {
+        "en": (
+            "The name contains characters or a Windows-reserved "
+            "name that cannot be used for a folder."
+        ),
+        "sv": (
+            "Namnet innehåller tecken eller ett Windows-reserverat "
+            "namn som inte kan användas för en mapp."
+        ),
+        "fi": (
+            "Nimi sisältää merkkejä tai Windowsin varaaman nimen, "
+            "jota ei voida käyttää kansion nimenä."
+        ),
+    },
+    "name_already_exists_title": {
+        "en": "Name already exists",
+        "sv": "Namnet används redan",
+        "fi": "Nimi on jo käytössä",
+    },
+    "name_already_exists_message": {
+        "en": "Another project or folder already uses that name.",
+        "sv": "Ett annat projekt eller en annan mapp använder redan namnet.",
+        "fi": "Toinen projekti tai kansio käyttää jo tätä nimeä.",
+    },
+    "rename_failed_title": {
+        "en": "Rename failed",
+        "sv": "Namnändringen misslyckades",
+        "fi": "Nimeäminen epäonnistui",
+    },
+    "rename_failed_message": {
+        "en": (
+            "The project folder could not be renamed:\n\n"
+            "{error}"
+        ),
+        "sv": (
+            "Projektmappens namn kunde inte ändras:\n\n"
+            "{error}"
+        ),
+        "fi": (
+            "Projektikansiota ei voitu nimetä uudelleen:\n\n"
+            "{error}"
+        ),
+    },
+    "printing_failed_title": {
+        "en": "Printing failed",
+        "sv": "Utskriften misslyckades",
+        "fi": "Tulostaminen epäonnistui",
+    },
+    "printer_open_failed_message": {
+        "en": "The selected printer could not be opened.",
+        "sv": "Den valda skrivaren kunde inte öppnas.",
+        "fi": "Valittua tulostinta ei voitu avata.",
+    },
+    "save_qgis_project": {
+        "en": "Save QGIS project",
+        "sv": "Spara QGIS-projekt",
+        "fi": "Tallenna QGIS-projekti",
+    },
+    "qgis_project_file": {
+        "en": "QGIS project (*.qgz)",
+        "sv": "QGIS-projekt (*.qgz)",
+        "fi": "QGIS-projekti (*.qgz)",
+    },
+    "save_error_title": {
+        "en": "Save error",
+        "sv": "Fel vid sparande",
+        "fi": "Tallennusvirhe",
+    },
+    "project_save_failed_message": {
+        "en": "The project could not be saved.",
+        "sv": "Projektet kunde inte sparas.",
+        "fi": "Projektia ei voitu tallentaa.",
+    },
+    "project_saved": {
+        "en": "Project saved",
+        "sv": "Projektet har sparats",
+        "fi": "Projekti tallennettiin",
+    },
+    "vector_data_filter": {
+        "en": "Vector data (*.gpkg *.shp *.geojson);;All files (*.*)",
+        "sv": "Vektordata (*.gpkg *.shp *.geojson);;Alla filer (*.*)",
+        "fi": "Vektoriaineistot (*.gpkg *.shp *.geojson);;Kaikki tiedostot (*.*)",
+    },
+    "about_content": {
+        "en": (
+            "<div style='min-width: 420px;'>"
+            "<h2 style='color: #153854;'>Sovra</h2>"
+            "<p>Renewable-energy site analysis and "
+            "GIS workspace.</p>"
+            "<p><b>Powered by:</b></p>"
+            "<table><tr>"
+            "{technology_html}"
+            "</tr></table>"
+            "<p style='color: #657585;'>"
+            "Sovra uses open-source geospatial and "
+            "application-development technologies."
+            "</p>"
+            "</div>"
+        ),
+        "sv": (
+            "<div style='min-width: 420px;'>"
+            "<h2 style='color: #153854;'>Sovra</h2>"
+            "<p>Analys av platser för förnybar energi "
+            "och GIS-arbetsyta.</p>"
+            "<p><b>Byggt med:</b></p>"
+            "<table><tr>"
+            "{technology_html}"
+            "</tr></table>"
+            "<p style='color: #657585;'>"
+            "Sovra använder öppna tekniker för geodata "
+            "och applikationsutveckling."
+            "</p>"
+            "</div>"
+        ),
+        "fi": (
+            "<div style='min-width: 420px;'>"
+            "<h2 style='color: #153854;'>Sovra</h2>"
+            "<p>Uusiutuvan energian sijoituspaikka-analyysi "
+            "ja GIS-työtila.</p>"
+            "<p><b>Toteutettu seuraavilla:</b></p>"
+            "<table><tr>"
+            "{technology_html}"
+            "</tr></table>"
+            "<p style='color: #657585;'>"
+            "Sovra käyttää avoimen lähdekoodin paikkatieto- "
+            "ja sovelluskehitysteknologioita."
+            "</p>"
+            "</div>"
+        ),
+    },
+    "basemap_unavailable": {
+        "en": "Basemap unavailable",
+        "sv": "Bakgrundskartan är inte tillgänglig",
+        "fi": "Taustakartta ei ole käytettävissä",
+    },
+    "basemap_unavailable_message": {
+        "en": (
+            "The selected background map could not be loaded:\n"
+            "{name}"
+        ),
+        "sv": (
+            "Den valda bakgrundskartan kunde inte läsas in:\n"
+            "{name}"
+        ),
+        "fi": (
+            "Valittua taustakarttaa ei voitu ladata:\n"
+            "{name}"
+        ),
+    },
+    "missing_analysis_source": {
+        "en": "Missing analysis source",
+        "sv": "Analysunderlag saknas",
+        "fi": "Analyysin lähtöaineisto puuttuu",
+    },
+    "missing_analysis_source_message": {
+        "en": (
+            "Enter an estate identifier or select a custom polygon."
+        ),
+        "sv": (
+            "Ange en fastighetsbeteckning eller välj en egen polygon."
+        ),
+        "fi": (
+            "Anna kiinteistötunnus tai valitse oma polygoni."
+        ),
+    },
+    "estate_not_found": {
+        "en": "Estate not found",
+        "sv": "Fastigheten hittades inte",
+        "fi": "Kiinteistöä ei löytynyt",
+    },
+    "estate_not_found_message": {
+        "en": (
+            "No estate was found matching:\n\n"
+            "{estate}\n\n"
+            "Check the spelling and the order of the municipality, "
+            "sector and estate identifier."
+        ),
+        "sv": (
+            "Ingen fastighet hittades som motsvarar:\n\n"
+            "{estate}\n\n"
+            "Kontrollera stavningen och ordningen för kommun, "
+            "trakt och fastighetsbeteckning."
+        ),
+        "fi": (
+            "Seuraavaa vastaavaa kiinteistöä ei löytynyt:\n\n"
+            "{estate}\n\n"
+            "Tarkista kunnan, kylän ja kiinteistötunnuksen "
+            "kirjoitusasu sekä järjestys."
+        ),
+    },
+    "analysis_failed_message": {
+        "en": (
+            "The analysis could not be completed.\n\n"
+            "Open the progress window details for the complete "
+            "error message."
+        ),
+        "sv": (
+            "Analysen kunde inte slutföras.\n\n"
+            "Öppna detaljerna i förloppsfönstret för att se "
+            "hela felmeddelandet."
+        ),
+        "fi": (
+            "Analyysiä ei voitu suorittaa loppuun.\n\n"
+            "Avaa etenemisikkunan lisätiedot nähdäksesi koko "
+            "virheilmoituksen."
+        ),
+    },
+    "open_qgis_project": {
+        "en": "Open QGIS project",
+        "sv": "Öppna QGIS-projekt",
+        "fi": "Avaa QGIS-projekti",
+    },
+    "qgis_project_files": {
+        "en": "QGIS projects (*.qgz *.qgs)",
+        "sv": "QGIS-projekt (*.qgz *.qgs)",
+        "fi": "QGIS-projektit (*.qgz *.qgs)",
+    },
+    "project_error": {
+        "en": "Project error",
+        "sv": "Projektfel",
+        "fi": "Projektivirhe",
+    },
+    "project_open_failed_message": {
+        "en": (
+            "Failed to open the QGIS project:\n"
+            "{path}"
+        ),
+        "sv": (
+            "QGIS-projektet kunde inte öppnas:\n"
+            "{path}"
+        ),
+        "fi": (
+            "QGIS-projektia ei voitu avata:\n"
+            "{path}"
+        ),
+    },
+    "project_crs_error": {
+        "en": "Project CRS error",
+        "sv": "Fel i projektets koordinatsystem",
+        "fi": "Projektin koordinaattijärjestelmävirhe",
+    },
+    "project_crs_error_message": {
+        "en": (
+            "The loaded project does not have a valid coordinate "
+            "reference system."
+        ),
+        "sv": (
+            "Det inlästa projektet saknar ett giltigt "
+            "koordinatreferenssystem."
+        ),
+        "fi": (
+            "Ladatulla projektilla ei ole kelvollista "
+            "koordinaattijärjestelmää."
+        ),
+    },
     "renewable_energy_site_analysis": {
         "en": "Renewable-energy site analysis",
         "sv": "Analys av platser för förnybar energi",

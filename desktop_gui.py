@@ -1083,7 +1083,7 @@ class SitesDesktop(QMainWindow):
 
         self.projects_tree.setHeaderLabels(
             [
-                "Local projects",
+                self.text("local_projects"),
             ]
         )
 
@@ -1781,18 +1781,15 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.critical(
                 self,
-                "Rename prevented",
-                (
-                    "Sovra refused to rename a path outside "
-                    "the local Projects folder."
-                ),
+                self.text("rename_prevented_title"),
+                self.text("rename_prevented_message"),
             )
             return
 
         new_name, accepted = QInputDialog.getText(
             self,
-            "Rename project",
-            "New name:",
+            self.text("rename_project_title"),
+            self.text("new_name_label"),
             text=source_path.name,
         )
 
@@ -1804,8 +1801,8 @@ class SitesDesktop(QMainWindow):
         if not new_name:
             QMessageBox.warning(
                 self,
-                "Invalid name",
-                "The name cannot be empty.",
+                self.text("invalid_name_title"),
+                self.text("name_cannot_be_empty"),
             )
             return
 
@@ -1838,11 +1835,9 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.warning(
                 self,
-                "Invalid name",
-                (
-                    "The name contains characters or a "
-                    "Windows-reserved name that cannot be "
-                    "used for a folder."
+                self.text("invalid_name_title"),
+                self.text(
+                    "invalid_folder_name_message"
                 ),
             )
             return
@@ -1858,10 +1853,11 @@ class SitesDesktop(QMainWindow):
         if target_path.exists():
             QMessageBox.warning(
                 self,
-                "Name already exists",
-                (
-                    "Another project or folder already "
-                    "uses that name."
+                self.text(
+                    "name_already_exists_title"
+                ),
+                self.text(
+                    "name_already_exists_message"
                 ),
             )
             return
@@ -1890,11 +1886,10 @@ class SitesDesktop(QMainWindow):
         except OSError as error:
             QMessageBox.critical(
                 self,
-                "Rename failed",
-                (
-                    "The project folder could not be "
-                    "renamed:\n\n"
-                    f"{error}"
+                self.text("rename_failed_title"),
+                self.text(
+                    "rename_failed_message",
+                    error=error,
                 ),
             )
             return
@@ -1913,7 +1908,10 @@ class SitesDesktop(QMainWindow):
                 )
 
         self.status_message.setText(
-            f"Renamed to: {new_name}"
+            self.text(
+                "renamed_to",
+                name=new_name,
+            )
         )
 
     def delete_selected_projects(self):
@@ -2077,8 +2075,8 @@ class SitesDesktop(QMainWindow):
 
         self.feature_table.setHorizontalHeaderLabels(
             [
-                "Field",
-                "Value",
+                self.text("field"),
+                self.text("value"),
             ]
         )
 
@@ -2093,8 +2091,8 @@ class SitesDesktop(QMainWindow):
 
         self.layer_table.setHorizontalHeaderLabels(
             [
-                "Property",
-                "Value",
+                self.text("property"),
+                self.text("value"),
             ]
         )
 
@@ -2592,8 +2590,12 @@ class SitesDesktop(QMainWindow):
         }
 
         self.status_message.setText(
-            "Application language selected: "
-            f"{language_names[language_code]}"
+            self.text(
+                "application_language_selected",
+                language=language_names[
+                    language_code
+                ],
+            )
         )
 
     def open_options(self):
@@ -3072,7 +3074,7 @@ class SitesDesktop(QMainWindow):
         )
 
         self.basemap_button.setToolTip(
-            "Select background map"
+            self.text("select_background_map")
         )
 
         self.basemap_button.setToolButtonStyle(
@@ -3163,7 +3165,7 @@ class SitesDesktop(QMainWindow):
         )
 
         self.browse_button = QPushButton(
-            "Browse…"
+            self.text("browse")
         )
 
         self.browse_button.setEnabled(
@@ -3192,7 +3194,7 @@ class SitesDesktop(QMainWindow):
 
     def create_status_bar(self):
         self.status_message = QLabel(
-            "Ready"
+            self.text("ready")
         )
 
         self.coordinate_label = QLabel(
@@ -3200,7 +3202,7 @@ class SitesDesktop(QMainWindow):
         )
 
         self.scale_label = QLabel(
-            "Scale: —"
+            self.text("scale_unavailable")
         )
 
         self.statusBar().addWidget(
@@ -3594,11 +3596,10 @@ class SitesDesktop(QMainWindow):
         if not candidate.isValid():
             QMessageBox.warning(
                 self,
-                "Basemap unavailable",
-                (
-                    "The selected background map could "
-                    "not be loaded:\n"
-                    f"{basemap_name}"
+                self.text("basemap_unavailable"),
+                self.text(
+                    "basemap_unavailable_message",
+                    name=basemap_name,
                 ),
             )
 
@@ -3622,7 +3623,10 @@ class SitesDesktop(QMainWindow):
         self.refresh_map_layers()
 
         self.status_message.setText(
-            f"Basemap: {basemap_name}"
+            self.text(
+                "basemap_selected",
+                name=basemap_name,
+            )
         )
 
     def visible_project_layers(self):
@@ -3768,7 +3772,9 @@ class SitesDesktop(QMainWindow):
             self.activate_pan_tool()
 
             self.source_input.setPlaceholderText(
-                "Select a polygon file…"
+                self.text(
+                    "select_polygon_file_placeholder"
+                )
             )
 
             if self.custom_polygon_path:
@@ -4613,10 +4619,9 @@ class SitesDesktop(QMainWindow):
         if not source_value:
             QMessageBox.warning(
                 self,
-                "Missing analysis source",
-                (
-                    "Enter an estate identifier or "
-                    "select a custom polygon."
+                self.text("missing_analysis_source"),
+                self.text(
+                    "missing_analysis_source_message"
                 ),
             )
 
@@ -4634,11 +4639,10 @@ class SitesDesktop(QMainWindow):
             if not os.path.isfile(source_file):
                 QMessageBox.warning(
                     self,
-                    "Polygon not found",
-                    (
-                        "The selected polygon source "
-                        "does not exist:\n\n"
-                        f"{source_file}"
+                    self.text("polygon_not_found"),
+                    self.text(
+                        "polygon_not_found_message",
+                        path=source_file,
                     ),
                 )
 
@@ -4709,7 +4713,7 @@ class SitesDesktop(QMainWindow):
             )
 
         self.status_message.setText(
-            "Analysis running…"
+            self.text("analysis_running")
         )
 
     def analysis_process_finished(
@@ -4725,7 +4729,7 @@ class SitesDesktop(QMainWindow):
 
         if exit_code != 0:
             self.status_message.setText(
-                "Analysis failed"
+                self.text("analysis_failed")
             )
 
             if "No estate was found for" in output:
@@ -4737,23 +4741,18 @@ class SitesDesktop(QMainWindow):
 
                 QMessageBox.warning(
                     self,
-                    "Estate not found",
-                    (
-                        "No estate was found matching:\n\n"
-                        f"{estate_name}\n\n"
-                        "Check the spelling and the order "
-                        "of the municipality, sector and "
-                        "estate identifier."
+                    self.text("estate_not_found"),
+                    self.text(
+                        "estate_not_found_message",
+                        estate=estate_name,
                     ),
                 )
             else:
                 QMessageBox.critical(
                     self,
-                    "Analysis failed",
-                    (
-                        "The analysis could not be completed.\n\n"
-                        "Open the progress window details "
-                        "for the complete error message."
+                    self.text("analysis_failed"),
+                    self.text(
+                        "analysis_failed_message"
                     ),
                 )
 
@@ -4768,9 +4767,8 @@ class SitesDesktop(QMainWindow):
 
         if completed_project is None:
             self.status_message.setText(
-                (
-                    "Analysis completed, but the new "
-                    "QGIS project could not be located."
+                self.text(
+                    "analysis_project_not_found"
                 )
             )
 
@@ -4788,7 +4786,9 @@ class SitesDesktop(QMainWindow):
         self.activateWindow()
 
         self.status_message.setText(
-            "Analysis completed and project loaded"
+            self.text(
+                "analysis_completed_project_loaded"
+            )
         )
 
     # ---------------------------------------------------------
@@ -4886,9 +4886,9 @@ class SitesDesktop(QMainWindow):
     def open_project(self):
         project_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Open QGIS project",
+            self.text("open_qgis_project"),
             os.path.expanduser("~"),
-            "QGIS projects (*.qgz *.qgs)",
+            self.text("qgis_project_files"),
         )
 
         if project_path:
@@ -4905,10 +4905,10 @@ class SitesDesktop(QMainWindow):
         if not self.project.read(project_path):
             QMessageBox.critical(
                 self,
-                "Project error",
-                (
-                    "Failed to open the QGIS project:\n"
-                    f"{project_path}"
+                self.text("project_error"),
+                self.text(
+                    "project_open_failed_message",
+                    path=project_path,
                 ),
             )
 
@@ -4919,10 +4919,9 @@ class SitesDesktop(QMainWindow):
         if not project_crs.isValid():
             QMessageBox.critical(
                 self,
-                "Project CRS error",
-                (
-                    "The loaded project does not have "
-                    "a valid coordinate reference system."
+                self.text("project_crs_error"),
+                self.text(
+                    "project_crs_error_message"
                 ),
             )
             return
@@ -4944,7 +4943,12 @@ class SitesDesktop(QMainWindow):
         )
 
         self.status_message.setText(
-            f"Project loaded: {os.path.basename(project_path)}"
+            self.text(
+                "project_loaded",
+                name=os.path.basename(
+                    project_path
+                ),
+            )
         )
 
     def print_project(self):
@@ -5027,7 +5031,7 @@ class SitesDesktop(QMainWindow):
         )
 
         print_dialog.setWindowTitle(
-            "Print Sovra project"
+            self.text("print_sovra_project")
         )
 
         if not print_dialog.exec_():
@@ -5038,8 +5042,10 @@ class SitesDesktop(QMainWindow):
         if not painter.begin(printer):
             QMessageBox.critical(
                 self,
-                "Printing failed",
-                "The selected printer could not be opened.",
+                self.text("printing_failed_title"),
+                self.text(
+                    "printer_open_failed_message"
+                ),
             )
             return
 
@@ -5072,7 +5078,7 @@ class SitesDesktop(QMainWindow):
         except Exception as error:
             QMessageBox.critical(
                 self,
-                "Printing failed",
+                self.text("printing_failed_title"),
                 str(error),
             )
 
@@ -5087,9 +5093,9 @@ class SitesDesktop(QMainWindow):
         if not project_path:
             project_path, _ = QFileDialog.getSaveFileName(
                 self,
-                "Save QGIS project",
+                self.text("save_qgis_project"),
                 os.path.expanduser("~"),
-                "QGIS project (*.qgz)",
+                self.text("qgis_project_file"),
             )
 
             if not project_path:
@@ -5105,14 +5111,15 @@ class SitesDesktop(QMainWindow):
         ):
             QMessageBox.critical(
                 self,
-                "Save error",
-                "The project could not be saved.",
+                self.text("save_error_title"),
+                self.text(
+                    "project_save_failed_message"
+                ),
             )
-
             return
 
         self.status_message.setText(
-            "Project saved"
+            self.text("project_saved")
         )
 
     # ---------------------------------------------------------
@@ -5252,8 +5259,9 @@ class SitesDesktop(QMainWindow):
 
         if admin_field_index == -1:
             self.status_message.setText(
-                "Country overview unavailable: "
-                "the ADMIN field was not found."
+                self.text(
+                    "overview_admin_field_missing"
+                )
             )
 
             return None
@@ -5272,8 +5280,10 @@ class SitesDesktop(QMainWindow):
                 return feature
 
         self.status_message.setText(
-            "Country overview unavailable: "
-            f"{country_name} was not found."
+            self.text(
+                "overview_country_not_found",
+                country=country_name,
+            )
         )
 
         return None
@@ -5370,8 +5380,10 @@ class SitesDesktop(QMainWindow):
 
         if not target_crs.isValid():
             self.status_message.setText(
-                "Country map unavailable: "
-                f"invalid CRS {country_settings['crs']}."
+                self.text(
+                    "country_map_invalid_crs",
+                    crs=country_settings["crs"],
+                )
             )
 
             return
@@ -5496,8 +5508,9 @@ class SitesDesktop(QMainWindow):
                 self.world_countries_layer = None
 
                 self.status_message.setText(
-                    "Country overview unavailable: "
-                    "world_countries.gpkg could not be loaded."
+                    self.text(
+                        "overview_dataset_unavailable"
+                    )
                 )
 
                 return False
@@ -5513,8 +5526,9 @@ class SitesDesktop(QMainWindow):
                 self.overview_satellite_layer = None
 
                 self.status_message.setText(
-                    "Country overview unavailable: "
-                    "satellite imagery could not be loaded."
+                    self.text(
+                        "overview_satellite_unavailable"
+                    )
                 )
 
                 return False
@@ -5713,8 +5727,9 @@ class SitesDesktop(QMainWindow):
 
         if selected_country is None:
             self.status_message.setText(
-                "Country overview unavailable: "
-                "the project location did not match a country."
+                self.text(
+                    "project_country_not_found"
+                )
             )
 
             self.overview_project_marker.hide()
@@ -5789,7 +5804,10 @@ class SitesDesktop(QMainWindow):
         scale,
     ):
         self.scale_label.setText(
-            f"Scale: 1:{scale:,.0f}"
+            self.text(
+                "scale_value",
+                scale=f"{scale:,.0f}",
+            )
         )
 
     def show_about(self):
@@ -5847,7 +5865,7 @@ class SitesDesktop(QMainWindow):
         )
 
         about_box.setWindowTitle(
-            "About Sovra"
+            self.text("about_sovra")
         )
 
         about_box.setTextFormat(
@@ -5855,19 +5873,10 @@ class SitesDesktop(QMainWindow):
         )
 
         about_box.setText(
-            "<div style='min-width: 420px;'>"
-            "<h2 style='color: #153854;'>Sovra</h2>"
-            "<p>Renewable-energy site analysis and "
-            "GIS workspace.</p>"
-            "<p><b>Powered by:</b></p>"
-            "<table><tr>"
-            f"{technology_html}"
-            "</tr></table>"
-            "<p style='color: #657585;'>"
-            "Sovra uses open-source geospatial and "
-            "application-development technologies."
-            "</p>"
-            "</div>"
+            self.text(
+                "about_content",
+                technology_html=technology_html,
+            )
         )
 
         about_box.setStandardButtons(

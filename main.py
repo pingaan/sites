@@ -1,6 +1,7 @@
 import gc
 import os
 
+from scripts.translations import ui_text
 from scripts.layer_settings import (
     apply_layer_settings,
 )
@@ -878,11 +879,13 @@ def run_analysis(runtime):
         map_data = prepare_map_project(
             working_crs=working_crs,
             title=site_data["folder_name"],
+            language=settings.language,
         )
 
         basemap_layer_ids = add_basemaps(
             map_data=map_data,
             basemap_definitions=BASEMAPS,
+            language=settings.language,
         )
 
         analysis_layer_ids = add_analysis_outputs(
@@ -890,6 +893,7 @@ def run_analysis(runtime):
             site_layer_path=site_layer_path,
             solar_candidate_path=solar_candidate_path,
             wind_candidate_path=wind_candidate_path,
+            language=settings.language,
         )
 
         country_map_layer_ids = add_country_outputs(
@@ -919,6 +923,7 @@ def run_analysis(runtime):
             neighbouring_estates_path=final_neighbours_path,
             ineligible_terrain_path=filtered_ineligible_terrain_path,
             contour_lines_path=contour_lines_path,
+            language=settings.language,
         )
 
         redlisted_species_layer_id = (
@@ -927,6 +932,7 @@ def run_analysis(runtime):
                 redlisted_species_result=(
                     redlisted_species_result
                 ),
+                language=settings.language,
             )
         )
 
@@ -1401,6 +1407,7 @@ def run_analysis(runtime):
         bos_map_layer_id = add_bos_coverage(
             map_data=map_data,
             bos_coverage_path=bos_coverage_path,
+            language=settings.language,
         )
 
         # -------------------------------------------------
@@ -1410,37 +1417,58 @@ def run_analysis(runtime):
         final_layer_definitions = [
             {
                 "key": "analysis_site",
-                "name": "Analysis site",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_analysis_site",
+                ),
                 "path": site_layer_path,
             },
             {
                 "key": "solar_candidate",
-                "name": "Solar candidate area",
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_solar_candidate",
+                ),
                 "path": solar_candidate_path,
             },
             {
                 "key": "wind_candidate",
-                "name": "Wind candidate area",
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_wind_candidate",
+                ),
                 "path": wind_candidate_path,
             },
             {
                 "key": "neighbouring_estates",
-                "name": "Neighbouring estates",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_neighbouring_estates",
+                ),
                 "path": final_neighbours_path,
             },
             {
                 "key": "ineligible_terrain",
-                "name": "Ineligible terrain",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_ineligible_terrain",
+                ),
                 "path": filtered_ineligible_terrain_path,
             },
             {
                 "key": "contour_lines",
-                "name": "Contour lines",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_contour_lines",
+                ),
                 "path": contour_lines_path,
             },
             {
                 "key": "bos_coverage",
-                "name": "BoS coverage",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_bos_coverage",
+                ),
                 "path": bos_coverage_path,
             },
         ]
@@ -1483,8 +1511,9 @@ def run_analysis(runtime):
         final_layer_definitions.append(
             {
                 "key": "redlisted_species",
-                "name": (
-                    "Red-listed species observations"
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_redlisted_species",
                 ),
                 "path": redlisted_output_path,
             }

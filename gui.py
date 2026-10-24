@@ -268,7 +268,7 @@ class SitesWindow(QMainWindow):
         )
 
         self.start_button = QPushButton(
-            "Start analysis"
+            self.text("start_analysis")
         )
 
         self.start_button.setMinimumHeight(

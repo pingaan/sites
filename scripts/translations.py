@@ -427,6 +427,784 @@ def translated_layer_name(
     )
 
 UI_TEXT = {
+    "package_layer_analysis_site": {
+        "en": "Analysis site",
+        "sv": "Analysområde",
+        "fi": "Analyysialue",
+    },
+    "package_layer_neighbouring_estates": {
+        "en": "Neighbouring estates",
+        "sv": "Angränsande fastigheter",
+        "fi": "Naapurikiinteistöt",
+    },
+    "package_layer_ineligible_terrain": {
+        "en": "Ineligible terrain",
+        "sv": "Olämplig terräng",
+        "fi": "Soveltumaton maasto",
+    },
+    "package_layer_contour_lines": {
+        "en": "Contour lines",
+        "sv": "Höjdkurvor",
+        "fi": "Korkeuskäyrät",
+    },
+    "package_layer_bos_coverage": {
+        "en": "BoS coverage",
+        "sv": "BoS-täckning",
+        "fi": "BoS-kattavuus",
+    },
+    "project_group_bos_analysis": {
+        "en": "BoS analysis",
+        "sv": "BoS-analys",
+        "fi": "BoS-analyysi",
+    },
+    "project_layer_bos_coverage": {
+        "en": "BoS land-cover coverage",
+        "sv": "BoS-marktäckning",
+        "fi": "BoS-maanpeite",
+    },
+    "project_bos_open_field": {
+        "en": "Open field",
+        "sv": "Öppen mark",
+        "fi": "Avoin alue",
+    },
+    "project_bos_peat_quarry": {
+        "en": "Peat quarry",
+        "sv": "Torvtäkt",
+        "fi": "Turvetuotantoalue",
+    },
+    "project_bos_forest": {
+        "en": "Forest",
+        "sv": "Skog",
+        "fi": "Metsä",
+    },
+    "project_bos_wetland": {
+        "en": "Wetland",
+        "sv": "Våtmark",
+        "fi": "Kosteikko",
+    },
+    "project_bos_rocky_terrain": {
+        "en": "Rocky terrain",
+        "sv": "Klippterräng",
+        "fi": "Kallioinen maasto",
+    },
+    "project_bos_other_land_cover": {
+        "en": "Other land cover",
+        "sv": "Övrig marktäckning",
+        "fi": "Muu maanpeite",
+    },
+    "project_bos_no_land_cover": {
+        "en": "No land-cover data",
+        "sv": "Inga marktäckningsdata",
+        "fi": "Ei maanpeitetietoja",
+    },
+    "project_group_species_observations": {
+        "en": "Species observations",
+        "sv": "Artobservationer",
+        "fi": "Lajihavainnot",
+    },
+    "project_layer_redlisted_species": {
+        "en": "Red-listed species observations",
+        "sv": "Rödlistade artobservationer",
+        "fi": "Uhanalaisten lajien havainnot",
+    },
+    "project_species_critically_endangered": {
+        "en": "Critically Endangered (CR)",
+        "sv": "Akut hotad (CR)",
+        "fi": "Äärimmäisen uhanalainen (CR)",
+    },
+    "project_species_endangered": {
+        "en": "Endangered (EN)",
+        "sv": "Starkt hotad (EN)",
+        "fi": "Erittäin uhanalainen (EN)",
+    },
+    "project_species_vulnerable": {
+        "en": "Vulnerable (VU)",
+        "sv": "Sårbar (VU)",
+        "fi": "Vaarantunut (VU)",
+    },
+    "project_species_near_threatened": {
+        "en": "Near Threatened (NT)",
+        "sv": "Nära hotad (NT)",
+        "fi": "Silmälläpidettävä (NT)",
+    },
+    "project_unknown_species": {
+        "en": "Unknown species",
+        "sv": "Okänd art",
+        "fi": "Tuntematon laji",
+    },
+    "project_group_wind": {
+        "en": "Wind",
+        "sv": "Vind",
+        "fi": "Tuulivoima",
+    },
+    "project_group_solar": {
+        "en": "Solar",
+        "sv": "Sol",
+        "fi": "Aurinkoenergia",
+    },
+    "project_group_other": {
+        "en": "Other",
+        "sv": "Övrigt",
+        "fi": "Muut",
+    },
+    "project_group_steep_slopes": {
+        "en": "Steep slopes",
+        "sv": "Branta sluttningar",
+        "fi": "Jyrkät rinteet",
+    },
+    "project_group_basemaps": {
+        "en": "Basemaps",
+        "sv": "Bakgrundskartor",
+        "fi": "Taustakartat",
+    },
+    "project_group_country_constraints": {
+        "en": "Country constraints",
+        "sv": "Landsspecifika begränsningar",
+        "fi": "Maakohtaiset rajoitteet",
+    },
+    "project_layer_analysis_estate": {
+        "en": "Analysis estate",
+        "sv": "Analysfastighet",
+        "fi": "Analyysikiinteistö",
+    },
+    "project_layer_solar_candidate": {
+        "en": "Solar candidate area",
+        "sv": "Kandidatområde för solenergi",
+        "fi": "Aurinkoenergian ehdokasalue",
+    },
+    "project_layer_wind_candidate": {
+        "en": "Wind candidate area",
+        "sv": "Kandidatområde för vindkraft",
+        "fi": "Tuulivoiman ehdokasalue",
+    },
+    "report_custom_estates_heading": {
+        "en": (
+            "Estates intersecting the custom analysis area"
+        ),
+        "sv": (
+            "Fastigheter som överlappar det anpassade "
+            "analysområdet"
+        ),
+        "fi": (
+            "Mukautetun analyysialueen kanssa "
+            "päällekkäiset kiinteistöt"
+        ),
+    },
+    "report_overlap": {
+        "en": "Overlap",
+        "sv": "Överlappning",
+        "fi": "Päällekkäisyys",
+    },
+    "report_of_analysis_area": {
+        "en": "of analysis area",
+        "sv": "av analysområdet",
+        "fi": "analyysialueesta",
+    },
+    "report_no_intersecting_estates": {
+        "en": (
+            "No named estate geometries intersect "
+            "the custom analysis area."
+        ),
+        "sv": (
+            "Inga namngivna fastighetsgeometrier "
+            "överlappar det anpassade analysområdet."
+        ),
+        "fi": (
+            "Mikään nimetty kiinteistögeometria ei ole "
+            "päällekkäinen mukautetun analyysialueen kanssa."
+        ),
+    },
+    "report_unmatched_area": {
+        "en": "Unregistered or unmatched area",
+        "sv": "Oregistrerad eller ej matchad yta",
+        "fi": "Rekisteröimätön tai tunnistamaton alue",
+    },
+    "report_estate_identification_failed": {
+        "en": "Estate identification failed",
+        "sv": "Identifieringen av fastigheter misslyckades",
+        "fi": "Kiinteistöjen tunnistaminen epäonnistui",
+    },
+    "report_unknown_error": {
+        "en": "unknown error",
+        "sv": "okänt fel",
+        "fi": "tuntematon virhe",
+    },
+    "report_estate_identification_unavailable": {
+        "en": (
+            "Estate identification is unavailable "
+            "for this analysis area."
+        ),
+        "sv": (
+            "Fastighetsidentifiering är inte tillgänglig "
+            "för detta analysområde."
+        ),
+        "fi": (
+            "Kiinteistöjen tunnistaminen ei ole "
+            "käytettävissä tällä analyysialueella."
+        ),
+    },
+    "report_soil_depth_by_type": {
+        "en": "Soil depth by soil type",
+        "sv": "Jorddjup efter jordart",
+        "fi": "Maaperän syvyys maalajeittain",
+    },
+    "report_soil_depth_not_performed": {
+        "en": "Soil-depth analysis was not performed.",
+        "sv": "Jorddjupsanalysen utfördes inte.",
+        "fi": "Maaperän syvyysanalyysiä ei suoritettu.",
+    },
+    "report_no_soil_depth_information": {
+        "en": (
+            "No soil-depth information was available for "
+            "the analysis site."
+        ),
+        "sv": (
+            "Ingen jorddjupsinformation var tillgänglig för "
+            "analysområdet."
+        ),
+        "fi": (
+            "Analyysialueelta ei ollut saatavilla maaperän "
+            "syvyystietoja."
+        ),
+    },
+    "report_no_valid_soil_types": {
+        "en": (
+            "No soil types with valid soil-depth data were found."
+        ),
+        "sv": (
+            "Inga jordarter med giltiga jorddjupsdata hittades."
+        ),
+        "fi": (
+            "Maalajeja, joilla olisi kelvollisia syvyystietoja, "
+            "ei löytynyt."
+        ),
+    },
+    "report_unknown_soil_type": {
+        "en": "Unknown soil type",
+        "sv": "Okänd jordart",
+        "fi": "Tuntematon maalaji",
+    },
+    "report_no_valid_soil_depth": {
+        "en": "no valid soil-depth data",
+        "sv": "inga giltiga jorddjupsdata",
+        "fi": "ei kelvollisia maaperän syvyystietoja",
+    },
+    "report_soil_depth_source_note": {
+        "en": (
+            "Source: SGU Jorddjupsmodell. Values represent "
+            "estimated depth to bedrock."
+        ),
+        "sv": (
+            "Källa: SGU:s jorddjupsmodell. Värdena avser "
+            "uppskattat djup till berggrund."
+        ),
+        "fi": (
+            "Lähde: SGU Jorddjupsmodell. Arvot kuvaavat "
+            "arvioitua syvyyttä kallioperään."
+        ),
+    },
+    "report_grid_information": {
+        "en": "Power-line and transformer information",
+        "sv": "Kraftlednings- och transformatorinformation",
+        "fi": "Voimajohto- ja muuntamotiedot",
+    },
+    "report_grid_not_configured": {
+        "en": (
+            "Grid-proximity data is not configured for this country."
+        ),
+        "sv": (
+            "Nätinfrastrukturens närhetsdata är inte konfigurerade "
+            "för detta land."
+        ),
+        "fi": (
+            "Sähköverkon läheisyystietoja ei ole määritetty "
+            "tälle maalle."
+        ),
+    },
+    "report_no_grid_infrastructure": {
+        "en": (
+            "No configured grid infrastructure was found within "
+            "the available surrounding context data."
+        ),
+        "sv": (
+            "Ingen konfigurerad nätinfrastruktur hittades i "
+            "tillgängliga data för det omgivande området."
+        ),
+        "fi": (
+            "Määritettyä sähköverkkoinfrastruktuuria ei löytynyt "
+            "käytettävissä olevista ympäröivän alueen tiedoista."
+        ),
+    },
+    "report_grid_crossing": {
+        "en": (
+            "crossing or within the configured proximity threshold"
+        ),
+        "sv": (
+            "korsar eller ligger inom det konfigurerade "
+            "närhetsavståndet"
+        ),
+        "fi": (
+            "risteää tai sijaitsee määritetyn läheisyysrajan sisällä"
+        ),
+    },
+    "report_voltage": {
+        "en": "voltage",
+        "sv": "spänning",
+        "fi": "jännite",
+    },
+    "report_primary_voltage": {
+        "en": "primary voltage",
+        "sv": "primärspänning",
+        "fi": "ensiöjännite",
+    },
+    "report_secondary_voltage": {
+        "en": "secondary voltage",
+        "sv": "sekundärspänning",
+        "fi": "toisiojännite",
+    },
+    "report_grid_threshold": {
+        "en": "Configured crossing/proximity threshold",
+        "sv": "Konfigurerat korsnings-/närhetsavstånd",
+        "fi": "Määritetty risteys-/läheisyysraja",
+    },
+    "report_grid_distance_limitation": {
+        "en": (
+            "Distances are limited to infrastructure available "
+            "within the processed context area."
+        ),
+        "sv": (
+            "Avstånden begränsas till infrastruktur som är "
+            "tillgänglig inom det bearbetade omgivningsområdet."
+        ),
+        "fi": (
+            "Etäisyydet rajoittuvat käsitellyllä ympäröivällä "
+            "alueella käytettävissä olevaan infrastruktuuriin."
+        ),
+    },
+    "report_project_potential": {
+        "en": "Potential of the project area",
+        "sv": "Projektområdets potential",
+        "fi": "Projektialueen potentiaali",
+    },
+    "report_suitable_solar_area": {
+        "en": "Suitable solar area",
+        "sv": "Lämplig yta för solenergi",
+        "fi": "Soveltuva aurinkoenergia-alue",
+    },
+    "report_estimated_solar_capacity": {
+        "en": "Estimated solar capacity",
+        "sv": "Uppskattad solenergikapacitet",
+        "fi": "Arvioitu aurinkosähkökapasiteetti",
+    },
+    "report_suitable_wind_area": {
+        "en": "Suitable wind area",
+        "sv": "Lämplig yta för vindkraft",
+        "fi": "Soveltuva tuulivoima-alue",
+    },
+    "report_estimated_wind_turbines": {
+        "en": "Estimated wind turbines",
+        "sv": "Uppskattat antal vindkraftverk",
+        "fi": "Arvioitu tuulivoimaloiden määrä",
+    },
+    "report_wind_turbine_capacity": {
+        "en": "Wind turbine capacity",
+        "sv": "Vindkraftverkets effekt",
+        "fi": "Tuulivoimalan teho",
+    },
+    "report_mw_per_turbine": {
+        "en": "MW per turbine",
+        "sv": "MW per vindkraftverk",
+        "fi": "MW per tuulivoimala",
+    },
+    "report_estimated_wind_capacity": {
+        "en": "Estimated wind capacity",
+        "sv": "Uppskattad vindkraftskapacitet",
+        "fi": "Arvioitu tuulivoimakapasiteetti",
+    },
+    "report_combined_project_capacity": {
+        "en": "Combined project capacity",
+        "sv": "Sammanlagd projektkapacitet",
+        "fi": "Projektin yhdistetty kapasiteetti",
+    },
+    "report_estimated_ac_capacity": {
+        "en": "Estimated AC capacity",
+        "sv": "Uppskattad AC-kapacitet",
+        "fi": "Arvioitu AC-kapasiteetti",
+    },
+    "report_estimated_bess_capacity": {
+        "en": "Estimated BESS capacity",
+        "sv": "Uppskattad BESS-kapacitet",
+        "fi": "Arvioitu BESS-kapasiteetti",
+    },
+    "report_potential_calculation_assumptions": {
+        "en": "Potential calculation assumptions",
+        "sv": "Antaganden för potentialberäkningen",
+        "fi": "Potentiaalilaskennan oletukset",
+    },
+    "report_solar_power_density": {
+        "en": "Solar power density",
+        "sv": "Effekttäthet för solenergi",
+        "fi": "Aurinkovoiman tehotiheys",
+    },
+    "report_wind_area_per_turbine": {
+        "en": "Wind area per turbine",
+        "sv": "Vindkraftsyta per vindkraftverk",
+        "fi": "Tuulivoima-alue per tuulivoimala",
+    },
+    "report_minimum_wind_turbine_area": {
+        "en": "Minimum area for one wind turbine",
+        "sv": "Minsta yta för ett vindkraftverk",
+        "fi": "Yhden tuulivoimalan vähimmäisalue",
+    },
+    "report_dc_ac_ratio": {
+        "en": "DC/AC ratio",
+        "sv": "DC/AC-förhållande",
+        "fi": "DC/AC-suhde",
+    },
+    "report_bess_share": {
+        "en": "BESS share of AC capacity",
+        "sv": "BESS-andel av AC-kapaciteten",
+        "fi": "BESS-osuus AC-kapasiteetista",
+    },
+    "report_bos_land_cover": {
+        "en": "BoS land-cover coverage",
+        "sv": "BoS-täckning efter marktäcke",
+        "fi": "BoS-maanpeitekattavuus",
+    },
+    "report_no_bos_land_cover_data": {
+        "en": "No BoS land-cover data available.",
+        "sv": "Inga BoS-marktäckedata tillgängliga.",
+        "fi": "BoS-maanpeitetietoja ei ole saatavilla.",
+    },
+    "report_analysis_area": {
+        "en": "Analysis area",
+        "sv": "Analysområde",
+        "fi": "Analyysialue",
+    },
+    "report_land_cover_open_field": {
+        "en": "Open field",
+        "sv": "Öppen mark",
+        "fi": "Avoin alue",
+    },
+    "report_land_cover_peat_quarry": {
+        "en": "Peat quarry",
+        "sv": "Torvtäkt",
+        "fi": "Turvetuotantoalue",
+    },
+    "report_land_cover_forest": {
+        "en": "Forest",
+        "sv": "Skog",
+        "fi": "Metsä",
+    },
+    "report_land_cover_wetland": {
+        "en": "Wetland",
+        "sv": "Våtmark",
+        "fi": "Kosteikko",
+    },
+    "report_land_cover_rocky_terrain": {
+        "en": "Rocky terrain",
+        "sv": "Bergig terräng",
+        "fi": "Kallioinen maasto",
+    },
+    "report_land_cover_other": {
+        "en": "Other land cover",
+        "sv": "Övrigt marktäcke",
+        "fi": "Muu maanpeite",
+    },
+    "report_land_cover_no_data": {
+        "en": "No land-cover data",
+        "sv": "Inga marktäckedata",
+        "fi": "Ei maanpeitetietoja",
+    },
+    "report_municipality_political_control": {
+        "en": "Municipality political control",
+        "sv": "Kommunens politiska styre",
+        "fi": "Kunnan poliittinen johto",
+    },
+    "report_no_political_data": {
+        "en": "No political data available",
+        "sv": "Inga politiska data tillgängliga",
+        "fi": "Poliittisia tietoja ei ole saatavilla",
+    },
+    "report_municipality": {
+        "en": "Municipality",
+        "sv": "Kommun",
+        "fi": "Kunta",
+    },
+    "report_ruling_parties": {
+        "en": "Ruling parties",
+        "sv": "Styrande partier",
+        "fi": "Hallituspuolueet",
+    },
+    "report_of_municipal_seats": {
+        "en": "of municipal seats",
+        "sv": "av mandaten i kommunfullmäktige",
+        "fi": "kunnanvaltuuston paikoista",
+    },
+    "report_meteorological_data": {
+        "en": "Meteorological data",
+        "sv": "Meteorologiska data",
+        "fi": "Meteorologiset tiedot",
+    },
+    "report_average_wind_speed": {
+        "en": "Average wind speed",
+        "sv": "Genomsnittlig vindhastighet",
+        "fi": "Keskimääräinen tuulen nopeus",
+    },
+    "report_average_wind_speed_at_height": {
+        "en": "Average wind speed at {height} m",
+        "sv": "Genomsnittlig vindhastighet på {height} m höjd",
+        "fi": "Keskimääräinen tuulen nopeus {height} m:n korkeudessa",
+    },
+    "report_wind_load": {
+        "en": "Wind load",
+        "sv": "Vindlast",
+        "fi": "Tuulikuorma",
+    },
+    "report_snow_load": {
+        "en": "Snow load",
+        "sv": "Snölast",
+        "fi": "Lumikuorma",
+    },
+    "report_average_humidity": {
+        "en": "Average humidity",
+        "sv": "Genomsnittlig luftfuktighet",
+        "fi": "Keskimääräinen ilmankosteus",
+    },
+    "report_average_air_temperature": {
+        "en": "Average air temperature",
+        "sv": "Genomsnittlig lufttemperatur",
+        "fi": "Keskimääräinen ilman lämpötila",
+    },
+    "report_average_air_pressure": {
+        "en": "Average air pressure",
+        "sv": "Genomsnittligt lufttryck",
+        "fi": "Keskimääräinen ilmanpaine",
+    },
+    "report_sampling_method": {
+        "en": "Sampling method",
+        "sv": "Samplingsmetod",
+        "fi": "Näytteenottomenetelmä",
+    },
+    "report_average_monthly_snow_depth": {
+        "en": "Average monthly snow depth",
+        "sv": "Genomsnittligt månatligt snödjup",
+        "fi": "Keskimääräinen kuukausittainen lumensyvyys",
+    },
+    "report_sampling_polygon_raster_mean": {
+        "en": "polygon raster mean",
+        "sv": "rastermedelvärde inom polygonen",
+        "fi": "polygonin rasterikeskiarvo",
+    },
+    "report_sampling_site_centroid_raster_cell": {
+        "en": "site centroid raster cell",
+        "sv": "rastercell vid områdets centroid",
+        "fi": "kohteen keskipisteen rasterisolu",
+    },
+    "report_month_january": {
+        "en": "January",
+        "sv": "Januari",
+        "fi": "Tammikuu",
+    },
+    "report_month_february": {
+        "en": "February",
+        "sv": "Februari",
+        "fi": "Helmikuu",
+    },
+    "report_month_march": {
+        "en": "March",
+        "sv": "Mars",
+        "fi": "Maaliskuu",
+    },
+    "report_month_april": {
+        "en": "April",
+        "sv": "April",
+        "fi": "Huhtikuu",
+    },
+    "report_month_may": {
+        "en": "May",
+        "sv": "Maj",
+        "fi": "Toukokuu",
+    },
+    "report_month_june": {
+        "en": "June",
+        "sv": "Juni",
+        "fi": "Kesäkuu",
+    },
+    "report_month_july": {
+        "en": "July",
+        "sv": "Juli",
+        "fi": "Heinäkuu",
+    },
+    "report_month_august": {
+        "en": "August",
+        "sv": "Augusti",
+        "fi": "Elokuu",
+    },
+    "report_month_september": {
+        "en": "September",
+        "sv": "September",
+        "fi": "Syyskuu",
+    },
+    "report_month_october": {
+        "en": "October",
+        "sv": "Oktober",
+        "fi": "Lokakuu",
+    },
+    "report_month_november": {
+        "en": "November",
+        "sv": "November",
+        "fi": "Marraskuu",
+    },
+    "report_month_december": {
+        "en": "December",
+        "sv": "December",
+        "fi": "Joulukuu",
+    },
+    "report_solar_position": {
+        "en": "Solar position",
+        "sv": "Solposition",
+        "fi": "Auringon sijainti",
+    },
+    "report_average_daytime_solar_elevation": {
+        "en": "Average daytime solar elevation",
+        "sv": "Genomsnittlig solhöjd under dagtid",
+        "fi": "Keskimääräinen auringon korkeuskulma päiväsaikaan",
+    },
+    "report_no_daylight_samples": {
+        "en": "No daylight samples available",
+        "sv": "Inga dagsljusprov tillgängliga",
+        "fi": "Päivänvalonäytteitä ei ole saatavilla",
+    },
+    "report_degrees": {
+        "en": "degrees",
+        "sv": "grader",
+        "fi": "astetta",
+    },
+    "report_calculation_period": {
+        "en": "Calculation period: {start} to {end}",
+        "sv": "Beräkningsperiod: {start} till {end}",
+        "fi": "Laskentajakso: {start}–{end}",
+    },
+    "report_solar_position_method": {
+        "en": (
+            "Method: Average of positive solar-elevation values "
+            "sampled at every whole UTC hour"
+        ),
+        "sv": (
+            "Metod: Medelvärde av positiva solhöjdsvärden "
+            "beräknade vid varje hel UTC-timme"
+        ),
+        "fi": (
+            "Menetelmä: Positiivisten auringon korkeuskulmien "
+            "keskiarvo laskettuna jokaiselta täydeltä UTC-tunnilta"
+        ),
+    },
+    "report_solar_resource": {
+        "en": "Solar resource",
+        "sv": "Solresurs",
+        "fi": "Aurinkoenergiaresurssi",
+    },
+    "report_solar_parameter_dif": {
+        "en": "Diffuse horizontal irradiation",
+        "sv": "Diffus horisontal instrålning",
+        "fi": "Hajasäteily vaakatasolle",
+    },
+    "report_solar_parameter_dni": {
+        "en": "Direct normal irradiation",
+        "sv": "Direkt normalinstrålning",
+        "fi": "Suora normaalisäteily",
+    },
+    "report_solar_parameter_ghi": {
+        "en": "Global horizontal irradiation",
+        "sv": "Global horisontal instrålning",
+        "fi": "Globaalisäteily vaakatasolle",
+    },
+    "report_solar_parameter_gti": {
+        "en": "Global tilted irradiation",
+        "sv": "Global instrålning på lutad yta",
+        "fi": "Globaalisäteily kallistetulle pinnalle",
+    },
+    "report_solar_parameter_opta": {
+        "en": "Optimum tilt angle",
+        "sv": "Optimal lutningsvinkel",
+        "fi": "Optimaalinen kallistuskulma",
+    },
+    "report_solar_parameter_pvout": {
+        "en": "Specific photovoltaic power output",
+        "sv": "Specifik solcellsproduktion",
+        "fi": "Aurinkosähkön ominaistuotto",
+    },
+    "report_solar_parameter_temperature": {
+        "en": "Average air temperature",
+        "sv": "Genomsnittlig lufttemperatur",
+        "fi": "Keskimääräinen ilman lämpötila",
+    },
+    "report_value": {
+        "en": "Value",
+        "sv": "Värde",
+        "fi": "Arvo",
+    },
+    "report_no_data_available": {
+        "en": "No data available",
+        "sv": "Inga data tillgängliga",
+        "fi": "Tietoja ei ole saatavilla",
+    },
+    "report_source": {
+        "en": "Source",
+        "sv": "Källa",
+        "fi": "Lähde",
+    },
+    "report_no_available_source": {
+        "en": "No available source",
+        "sv": "Ingen tillgänglig källa",
+        "fi": "Lähdettä ei ole saatavilla",
+    },
+    "report_daily_average": {
+        "en": "Daily average",
+        "sv": "Dygnsmedelvärde",
+        "fi": "Päivittäinen keskiarvo",
+    },
+    "report_yearly_total": {
+        "en": "Yearly total",
+        "sv": "Årssumma",
+        "fi": "Vuotuinen kokonaismäärä",
+    },
+    "report_status": {
+        "en": "Status",
+        "sv": "Status",
+        "fi": "Tila",
+    },
+    "report_estimated_value": {
+        "en": "Estimated value",
+        "sv": "Uppskattat värde",
+        "fi": "Arvioitu arvo",
+    },
+    "report_derivation": {
+        "en": "Derivation",
+        "sv": "Härledning",
+        "fi": "Johdanto",
+    },
+    "report_site_analysis": {
+        "en": "Site analysis: {name}",
+        "sv": "Platsanalys: {name}",
+        "fi": "Kohdeanalyysi: {name}",
+    },
+    "report_site_summary": {
+        "en": "Site summary",
+        "sv": "Sammanfattning av området",
+        "fi": "Kohteen yhteenveto",
+    },
+    "report_area": {
+        "en": "Area",
+        "sv": "Areal",
+        "fi": "Pinta-ala",
+    },
+    "report_tariff_zone": {
+        "en": "Tariff zone",
+        "sv": "Tariffområde",
+        "fi": "Tariffialue",
+    },
     "renamed_to": {
         "en": "Renamed to: {name}",
         "sv": "Namn ändrat till: {name}",
@@ -448,9 +1226,9 @@ UI_TEXT = {
         "fi": "Mittakaava: 1:{scale}",
     },
     "application_language_selected": {
-        "en": "Application language selected: {language}",
-        "sv": "Applikationsspråk valt: {language}",
-        "fi": "Sovelluksen kieli valittu: {language}",
+        "en": "Application language selected: {language_name}",
+        "sv": "Applikationsspråk valt: {language_name}",
+        "fi": "Sovelluksen kieli valittu: {language_name}",
     },
     "starting_analysis": {
         "en": "Starting analysis…",
@@ -1435,19 +2213,19 @@ UI_TEXT = {
             "The language setting has been saved.\n\n"
             "Sovra must be restarted before the new language "
             "is applied.\n\n"
-            "Close Sovra now?"
+            "Restart Sovra now?"
         ),
         "sv": (
             "Språkinställningen har sparats.\n\n"
             "Sovra måste startas om innan det nya språket "
             "börjar användas.\n\n"
-            "Vill du stänga Sovra nu?"
+            "Starta om Sovra nu?"
         ),
         "fi": (
             "Kieliasetus on tallennettu.\n\n"
             "Sovra on käynnistettävä uudelleen, jotta uusi "
             "kieli otetaan käyttöön.\n\n"
-            "Suljetaanko Sovra nyt?"
+            "Käynnistetäänkö Sovra uudelleen nyt?"
         ),
     },
         "export_area_dialog": {

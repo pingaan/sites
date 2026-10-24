@@ -1,0 +1,25 @@
+warning: in the working copy of 'main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/map_project.py', LF will be replaced by CRLF the next time Git touches it
+ __pycache__/desktop_gui.cpython-313.pyc            | Bin [31m151145[m -> [32m152480[m bytes
+ __pycache__/gui.cpython-312.pyc                    | Bin [31m33565[m -> [32m34685[m bytes
+ __pycache__/gui.cpython-313.pyc                    | Bin [31m34735[m -> [32m34818[m bytes
+ __pycache__/main.cpython-313.pyc                   | Bin [31m29789[m -> [32m30662[m bytes
+ desktop_gui.py                                     |  60 [32m+[m[31m-[m
+ gui.py                                             |   2 [32m+[m[31m-[m
+ main.py                                            |  47 [32m+[m[31m-[m
+ scripts/__pycache__/constraints.cpython-312.pyc    | Bin [31m31483[m -> [32m32773[m bytes
+ scripts/__pycache__/grid_proximity.cpython-312.pyc | Bin [31m7779[m -> [32m7945[m bytes
+ scripts/__pycache__/map_project.cpython-312.pyc    | Bin [31m24808[m -> [32m28061[m bytes
+ scripts/__pycache__/map_project.cpython-313.pyc    | Bin [31m27162[m -> [32m28248[m bytes
+ scripts/__pycache__/options_dialog.cpython-312.pyc | Bin [31m19968[m -> [32m21025[m bytes
+ scripts/__pycache__/options_dialog.cpython-313.pyc | Bin [31m19948[m -> [32m21005[m bytes
+ .../__pycache__/postgis_spatial.cpython-312.pyc    | Bin [31m7621[m -> [32m7690[m bytes
+ scripts/__pycache__/reporting.cpython-312.pyc      | Bin [31m28111[m -> [32m34849[m bytes
+ scripts/__pycache__/reporting.cpython-313.pyc      | Bin [31m26504[m -> [32m35238[m bytes
+ scripts/__pycache__/translations.cpython-312.pyc   | Bin [31m22054[m -> [32m72575[m bytes
+ scripts/__pycache__/translations.cpython-313.pyc   | Bin [31m51678[m -> [32m72552[m bytes
+ scripts/map_project.py                             | 180 [32m+++[m[31m--[m
+ scripts/options_dialog.py                          |  16 [32m+[m[31m-[m
+ scripts/reporting.py                               | 815 [32m++++++++++++++++[m[31m-----[m
+ scripts/translations.py                            | 790 [32m+++++++++++++++++++[m[31m-[m
+ 22 files changed, 1657 insertions(+), 253 deletions(-)

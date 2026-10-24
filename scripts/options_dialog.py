@@ -32,6 +32,8 @@ from scripts.layer_metadata import (
 
 TEXT = {
     "en": {
+        "country_sweden": "Sweden",
+        "country_finland": "Finland",
         "layer": "Layer",
         "solar_distance": "Solar distance",
         "wind_distance": "Wind distance",
@@ -52,6 +54,8 @@ TEXT = {
         ),
     },
     "sv": {
+        "country_sweden": "Sverige",
+        "country_finland": "Finland",        
         "layer": "Lager",
         "solar_distance": "Solavstånd",
         "wind_distance": "Vindavstånd",
@@ -73,6 +77,8 @@ TEXT = {
         ),
     },
     "fi": {
+        "country_sweden": "Ruotsi",
+        "country_finland": "Suomi",
         "layer": "Taso",
         "solar_distance": "Aurinkoetäisyys",
         "wind_distance": "Tuulietäisyys",
@@ -287,12 +293,18 @@ class OptionsDialog(QDialog):
         self.layer_country_combo = QComboBox()
 
         self.layer_country_combo.addItem(
-            "Sweden",
+            option_text(
+                self.current_language,
+                "country_sweden",
+            ),
             "SE",
         )
 
         self.layer_country_combo.addItem(
-            "Finland",
+            option_text(
+                self.current_language,
+                "country_finland",
+            ),
             "FI",
         )
 

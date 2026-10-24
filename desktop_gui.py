@@ -16,6 +16,7 @@ from qgis.PyQt.QtPrintSupport import (
 from qgis.PyQt.QtCore import (
     Qt,
     QTimer,
+    QProcess,
     QPointF,
     QSizeF,
     pyqtSignal,
@@ -2592,7 +2593,7 @@ class SitesDesktop(QMainWindow):
         self.status_message.setText(
             self.text(
                 "application_language_selected",
-                language=language_names[
+                language_name=language_names[
                     language_code
                 ],
             )
@@ -2644,7 +2645,62 @@ class SitesDesktop(QMainWindow):
         )
 
         if answer == QMessageBox.Yes:
-            self.close()
+            self.restart_application()
+
+    def restart_application(self):
+        """
+        Start a new Sovra process and close this instance.
+        """
+
+        application_root = (
+            Path(__file__).resolve().parent
+        )
+
+        launcher_path = (
+            application_root
+            / "run_sites.bat"
+        )
+
+        if not launcher_path.is_file():
+            QMessageBox.critical(
+                self,
+                self.text("launcher_missing"),
+                self.text(
+                    "launcher_missing_message",
+                    path=launcher_path,
+                ),
+            )
+            return
+
+        result = QProcess.startDetached(
+            "cmd.exe",
+            [
+                "/d",
+                "/c",
+                str(launcher_path),
+            ],
+        )
+
+        if isinstance(result, tuple):
+            started = result[0]
+        else:
+            started = bool(result)
+
+        if not started:
+            QMessageBox.critical(
+                self,
+                self.text("launcher_missing"),
+                self.text(
+                    "launcher_missing_message",
+                    path=launcher_path,
+                ),
+            )
+            return
+
+        application = QgsApplication.instance()
+
+        if application is not None:
+            application.quit()
 
     def create_menus(self):
         file_menu = self.menuBar().addMenu(

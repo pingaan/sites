@@ -3,6 +3,31 @@ import os
 from datetime import date
 from qgis.core import QgsVectorLayer
 
+from scripts.translations import ui_text
+
+def report_text(
+    key,
+    **values,
+):
+    """
+    Return report text in the globally selected language.
+
+    Analyses launched outside the desktop application default
+    to English.
+    """
+
+    language = os.environ.get(
+        "SITES_LANGUAGE",
+        "en",
+    )
+
+    return ui_text(
+        language,
+        key,
+        **values,
+    )
+
+
 
 def format_site_name(folder_name):
     """
@@ -31,9 +56,21 @@ def render_markdown_lines(lines):
     """
 
     subsection_names = {
-        "Potential calculation assumptions",
-        "Average monthly snow depth:",
-        "Ruling parties:",
+        report_text(
+            "report_potential_calculation_assumptions"
+        ),
+        (
+            report_text(
+                "report_average_monthly_snow_depth"
+            )
+            + ":"
+        ),
+        (
+            report_text(
+                "report_ruling_parties"
+            )
+            + ":"
+        ),
     }
 
     rendered_lines = []
@@ -180,11 +217,27 @@ def create_site_summary(
         )
 
     report_lines = [
-        f"# Site analysis: {readable_name}",
+        (
+            "# "
+            + report_text(
+                "report_site_analysis",
+                name=readable_name,
+            )
+        ),
         "",
-        "## Site summary",
+        (
+            "## "
+            + report_text(
+                "report_site_summary"
+            )
+        ),
         "",
-        f"- **Area:** {total_area_ha:.2f} ha",
+        (
+            "- **"
+            + report_text("report_area")
+            + ":** "
+            + f"{total_area_ha:.2f} ha"
+        ),
     ]
 
     tariff_field = summary_settings.get(
@@ -229,8 +282,12 @@ def create_site_summary(
 
         for tariff_zone in tariff_zones:
             report_lines.append(
-                f"- **Tariff zone:** "
-                f"{tariff_prefix}{tariff_zone}"
+                "- **"
+                + report_text(
+                    "report_tariff_zone"
+                )
+                + ":** "
+                + f"{tariff_prefix}{tariff_zone}"
             )
 
     report_path = os.path.join(
@@ -293,10 +350,14 @@ def append_solar_resource_summary(
         "temperature",
     )
 
+    solar_heading = report_text(
+        "report_solar_resource"
+    )
+
     lines = [
         "",
-        "Solar resource",
-        "--------------",
+        solar_heading,
+        "-" * len(solar_heading),
     ]
 
     for key in parameter_order:
@@ -307,46 +368,95 @@ def append_solar_resource_summary(
             continue
 
         lines.append("")
-        lines.append(f"{result['name']}:")
+
+        parameter_name = report_text(
+            f"report_solar_parameter_{key}"
+        )
+
+        lines.append(
+            f"{parameter_name}:"
+        )
 
         if result["value"] is None:
-            lines.append("  Value: No data available")
-            lines.append("  Source: No available source")
+            lines.append(
+                "  "
+                + report_text("report_value")
+                + ": "
+                + report_text(
+                    "report_no_data_available"
+                )
+            )
+
+            lines.append(
+                "  "
+                + report_text("report_source")
+                + ": "
+                + report_text(
+                    "report_no_available_source"
+                )
+            )
+
             continue
 
         if result["yearly_value"] is not None:
             lines.append(
-                f"  Daily average: "
-                f"{result['value']:.3f} "
-                f"{result['unit']}"
+                "  "
+                + report_text(
+                    "report_daily_average"
+                )
+                + ": "
+                + f"{result['value']:.3f} "
+                + f"{result['unit']}"
             )
 
             lines.append(
-                f"  Yearly total: "
-                f"{result['yearly_value']:.1f} "
-                f"{result['yearly_unit']}"
+                "  "
+                + report_text(
+                    "report_yearly_total"
+                )
+                + ": "
+                + f"{result['yearly_value']:.1f} "
+                + f"{result['yearly_unit']}"
             )
 
         else:
             lines.append(
-                f"  Value: "
-                f"{result['value']:.3f} "
-                f"{result['unit']}"
+                "  "
+                + report_text("report_value")
+                + ": "
+                + f"{result['value']:.3f} "
+                + f"{result['unit']}"
             )
 
         lines.append(
-            f"  Source: {result['source']}"
+            "  "
+            + report_text("report_source")
+            + ": "
+            + str(result["source"])
         )
 
         if result["status"] == "estimated":
             lines.append(
-                "  Status: Estimated value"
+                "  "
+                + report_text("report_status")
+                + ": "
+                + report_text(
+                    "report_estimated_value"
+                )
             )
 
         if "derivation_factor" in result:
             lines.append(
-                f"  Derivation: GHI × "
-                f"{result['derivation_factor']}"
+                "  "
+                + report_text(
+                    "report_derivation"
+                )
+                + ": GHI × "
+                + str(
+                    result[
+                        "derivation_factor"
+                    ]
+                )
             )
 
     with open(
@@ -401,34 +511,56 @@ def append_solar_position_summary(
         end_day,
     )
 
+    solar_position_heading = report_text(
+        "report_solar_position"
+    )
+
     lines = [
         "",
-        "Solar position",
-        "--------------",
+        solar_position_heading,
+        "-" * len(
+            solar_position_heading
+        ),
     ]
 
     if average_elevation is None:
         lines.append(
-            "Average daytime solar elevation: "
-            "No daylight samples available"
+            report_text(
+                "report_average_daytime_solar_elevation"
+            )
+            + ": "
+            + report_text(
+                "report_no_daylight_samples"
+            )
         )
 
     else:
         lines.append(
-            "Average daytime solar elevation: "
-            f"{average_elevation:.2f} degrees"
+            report_text(
+                "report_average_daytime_solar_elevation"
+            )
+            + ": "
+            + f"{average_elevation:.2f} "
+            + report_text("report_degrees")
         )
 
-    lines.append(
-        f"Calculation period: "
-        f"{start_date:%Y-%m-%d} to "
-        f"{end_date:%Y-%m-%d}"
-    )
+        lines.append(
+            report_text(
+                "report_calculation_period",
+                start=(
+                    f"{start_date:%Y-%m-%d}"
+                ),
+                end=(
+                    f"{end_date:%Y-%m-%d}"
+                ),
+            )
+        )
 
-    lines.append(
-        "Method: Average of positive solar-elevation "
-        "values sampled at every whole UTC hour"
-    )
+        lines.append(
+            report_text(
+                "report_solar_position_method"
+            )
+        )
 
     with open(
         report_path,
@@ -506,6 +638,65 @@ def format_meteorological_value(
 
     return value_text
 
+def report_sampling_method(
+    sampling_method,
+):
+    """
+    Translate a known meteorological sampling method.
+    """
+
+    sampling_method = str(
+        sampling_method
+    ).strip()
+
+    translation_keys = {
+        "polygon raster mean": (
+            "report_sampling_polygon_raster_mean"
+        ),
+        "site centroid raster cell": (
+            "report_sampling_site_centroid_raster_cell"
+        ),
+    }
+
+    translation_key = translation_keys.get(
+        sampling_method.casefold()
+    )
+
+    if translation_key is None:
+        return sampling_method
+
+    return report_text(
+        translation_key
+    )
+
+
+def report_month_name(
+    month_name,
+):
+    """
+    Translate an English month name used by raster results.
+    """
+
+    month_name = str(
+        month_name
+    ).strip()
+
+    translation_key = (
+        "report_month_"
+        + month_name.casefold()
+    )
+
+    translated_name = report_text(
+        translation_key
+    )
+
+    if translated_name == translation_key:
+        return month_name
+
+    return translated_name
+
+
+
 def append_meteorology_summary(
     folder_path,
     folder_name,
@@ -531,85 +722,147 @@ def append_meteorology_summary(
             f"Site summary does not exist: {report_path}"
         )
 
+    meteorology_heading = report_text(
+        "report_meteorological_data"
+    )
+
     lines = [
         "",
-        "Meteorological data",
-        "-------------------",
+        meteorology_heading,
+        "-" * len(meteorology_heading),
         "",
     ]
 
     if wind_speed_result["value"] is None:
         lines.append(
-            "Average wind speed: No data available"
+            report_text(
+                "report_average_wind_speed"
+            )
+            + ": "
+            + report_text(
+                "report_no_data_available"
+            )
         )
 
         if wind_speed_result["source"]:
             lines.append(
-                f"Source: {wind_speed_result['source']}"
+                report_text("report_source")
+                + ": "
+                + str(
+                    wind_speed_result["source"]
+                )
             )
 
     else:
-        lines.append(
-            f"Average wind speed at "
-            f"{wind_speed_result['height_m']} m: "
-            f"{wind_speed_result['value']:.2f} "
-            f"{wind_speed_result['unit']}"
+        wind_speed_label = report_text(
+            "report_average_wind_speed_at_height",
+            height=wind_speed_result[
+                "height_m"
+            ],
         )
 
         lines.append(
-            f"Source: {wind_speed_result['source']}"
+            wind_speed_label
+            + ": "
+            + f"{wind_speed_result['value']:.2f} "
+            + f"{wind_speed_result['unit']}"
+        )
+
+        lines.append(
+            report_text("report_source")
+            + ": "
+            + str(
+                wind_speed_result["source"]
+            )
         )
 
     if wind_load_result is not None:
         lines.append("")
 
+        wind_load_label = report_text(
+            "report_wind_load"
+        )
+
         if not wind_load_result["values"]:
             lines.append(
-                "Wind load: No data available"
+                wind_load_label
+                + ": "
+                + report_text(
+                    "report_no_data_available"
+                )
             )
 
         else:
             for value in wind_load_result["values"]:
                 lines.append(
-                    f"Wind load: "
-                    f"{value:.2f} "
-                    f"{wind_load_result['unit']}"
+                    wind_load_label
+                    + ": "
+                    + f"{value:.2f} "
+                    + f"{wind_load_result['unit']}"
                 )
 
             lines.append(
-                f"Source: "
-                f"{wind_load_result['source']}"
+                report_text("report_source")
+                + ": "
+                + str(
+                    wind_load_result["source"]
+                )
             )
 
     if snow_load_result is not None:
         lines.append("")
 
+        snow_load_label = report_text(
+            "report_snow_load"
+        )
+
         if not snow_load_result["values"]:
             lines.append(
-                "Snow load: No data available"
+                snow_load_label
+                + ": "
+                + report_text(
+                    "report_no_data_available"
+                )
             )
 
         else:
             for value in snow_load_result["values"]:
                 lines.append(
-                    f"Snow load: "
-                    f"{value:.2f} "
-                    f"{snow_load_result['unit']}"
+                    snow_load_label
+                    + ": "
+                    + f"{value:.2f} "
+                    + f"{snow_load_result['unit']}"
                 )
 
             lines.append(
-                f"Source: "
-                f"{snow_load_result['source']}"
+                report_text("report_source")
+                + ": "
+                + str(
+                    snow_load_result["source"]
+                )
             )
 
     raster_results = (
-        ("Average humidity", humidity_result),
-        ("Average air temperature", temperature_result),
-        ("Average air pressure", air_pressure_result),
+        (
+            "report_average_humidity",
+            humidity_result,
+        ),
+        (
+            "report_average_air_temperature",
+            temperature_result,
+        ),
+        (
+            "report_average_air_pressure",
+            air_pressure_result,
+        ),
     )
 
-    for label, result in raster_results:
+    for label_key, result in raster_results:
         lines.append("")
+
+        label = report_text(
+            label_key
+        )
 
         value_text = format_meteorological_value(
             result
@@ -617,7 +870,11 @@ def append_meteorology_summary(
 
         if value_text is None:
             lines.append(
-                f"{label}: No data available"
+                label
+                + ": "
+                + report_text(
+                    "report_no_data_available"
+                )
             )
             continue
 
@@ -627,23 +884,36 @@ def append_meteorology_summary(
 
         if result.get("source"):
             lines.append(
-                f"Source: {result['source']}"
+                report_text("report_source")
+                + ": "
+                + str(result["source"])
             )
 
         if result.get("sampling_method"):
             lines.append(
-                f"Sampling method: "
-                f"{result['sampling_method']}"
+                report_text(
+                    "report_sampling_method"
+                )
+                + ": "
+                + report_sampling_method(
+                    result["sampling_method"]
+                )
             )
 
     lines.append("")
     lines.append(
-        "Average monthly snow depth:"
+        report_text(
+            "report_average_monthly_snow_depth"
+        )
+        + ":"
     )
 
     if not snow_depth_results:
         lines.append(
-            "  No data available"
+            "  "
+            + report_text(
+                "report_no_data_available"
+            )
         )
 
     else:
@@ -652,6 +922,11 @@ def append_meteorology_summary(
         for month_name, result in (
             snow_depth_results.items()
         ):
+            translated_month_name = (
+                report_month_name(
+                    month_name
+                )
+            )
             value_text = format_meteorological_value(
                 result,
                 default_precision=3,
@@ -659,8 +934,10 @@ def append_meteorology_summary(
 
             if value_text is None:
                 lines.append(
-                    f"  {month_name}: "
-                    "No data available"
+                    f"  {translated_month_name}: "
+                    + report_text(
+                        "report_no_data_available"
+                    )
                 )
                 continue
 
@@ -670,13 +947,17 @@ def append_meteorology_summary(
 
             if sampling_method:
                 lines.append(
-                    f"  {month_name}: "
+                    f"  {translated_month_name}: "
                     f"{value_text} "
-                    f"[{sampling_method}]"
+                    "["
+                    + report_sampling_method(
+                        sampling_method
+                    )
+                    + "]"
                 )
             else:
                 lines.append(
-                    f"  {month_name}: "
+                    f"  {translated_month_name}: "
                     f"{value_text}"
                 )
 
@@ -687,7 +968,9 @@ def append_meteorology_summary(
 
         for source_name in sorted(snow_sources):
             lines.append(
-                f"Source: {source_name}"
+                report_text("report_source")
+                + ": "
+                + str(source_name)
             )
 
     with open(
@@ -725,10 +1008,14 @@ def append_municipality_politics_summary(
             f"Site summary does not exist: {report_path}"
         )
 
+    politics_heading = report_text(
+        "report_municipality_political_control"
+    )
+
     lines = [
         "",
-        "Municipality political control",
-        "------------------------------",
+        politics_heading,
+        "-" * len(politics_heading),
     ]
 
     municipalities = political_result.get(
@@ -738,19 +1025,29 @@ def append_municipality_politics_summary(
 
     if not municipalities:
         lines.append(
-            "No political data available"
+            report_text(
+                "report_no_political_data"
+            )
         )
 
     else:
         for municipality in municipalities:
             lines.append("")
             lines.append(
-                f"Municipality: "
-                f"{municipality['name']}"
+                report_text(
+                    "report_municipality"
+                )
+                + ": "
+                + str(
+                    municipality["name"]
+                )
             )
 
             lines.append(
-                "Ruling parties:"
+                report_text(
+                    "report_ruling_parties"
+                )
+                + ":"
             )
 
             for party in municipality[
@@ -768,7 +1065,9 @@ def append_municipality_politics_summary(
                     lines.append(
                         f"  - {party['name']}: "
                         f"{influence:.1f}% "
-                        "of municipal seats"
+                        + report_text(
+                            "report_of_municipal_seats"
+                        )
                     )
 
     source_path = political_result.get(
@@ -778,8 +1077,11 @@ def append_municipality_politics_summary(
     if source_path:
         lines.append("")
         lines.append(
-            f"Source: "
-            f"{os.path.basename(source_path)}"
+            report_text("report_source")
+            + ": "
+            + os.path.basename(
+                source_path
+            )
         )
 
     with open(
@@ -813,10 +1115,14 @@ def append_bos_summary(
         "project_report.md",
     )
 
+    bos_heading = report_text(
+        "report_bos_land_cover"
+    )
+
     lines = [
         "",
-        "BoS land-cover coverage",
-        "-----------------------",
+        bos_heading,
+        "-" * len(bos_heading),
     ]
 
     if (
@@ -824,23 +1130,49 @@ def append_bos_summary(
         or bos_summary.get("status") != "available"
     ):
         lines.append(
-            "No BoS land-cover data available."
+            report_text(
+                "report_no_bos_land_cover_data"
+            )
         )
 
     else:
         lines.append(
-            "Analysis area: "
-            f"{bos_summary['analysis_area_ha']:.3f} ha"
+            report_text(
+                "report_analysis_area"
+            )
+            + ": "
+            + f"{bos_summary['analysis_area_ha']:.3f} ha"
         )
 
         group_order = (
-            "Open field",
-            "Peat quarry",
-            "Forest",
-            "Wetland",
-            "Rocky terrain",
-            "Other land cover",
-            "No land-cover data",
+            (
+                "Open field",
+                "report_land_cover_open_field",
+            ),
+            (
+                "Peat quarry",
+                "report_land_cover_peat_quarry",
+            ),
+            (
+                "Forest",
+                "report_land_cover_forest",
+            ),
+            (
+                "Wetland",
+                "report_land_cover_wetland",
+            ),
+            (
+                "Rocky terrain",
+                "report_land_cover_rocky_terrain",
+            ),
+            (
+                "Other land cover",
+                "report_land_cover_other",
+            ),
+            (
+                "No land-cover data",
+                "report_land_cover_no_data",
+            ),
         )
 
         areas = bos_summary.get(
@@ -853,7 +1185,10 @@ def append_bos_summary(
             {},
         )
 
-        for group_name in group_order:
+        for (
+            group_name,
+            translation_key,
+        ) in group_order:
 
             area_ha = areas.get(
                 group_name,
@@ -865,8 +1200,12 @@ def append_bos_summary(
                 0.0,
             )
 
+            display_name = report_text(
+                translation_key
+            )
+
             lines.append(
-                f"{group_name}: "
+                f"{display_name}: "
                 f"{percentage:.2f}% "
                 f"({area_ha:.3f} ha)"
             )
@@ -901,71 +1240,126 @@ def append_project_potential_summary(
         "project_report.md",
     )
 
+    potential_heading = report_text(
+        "report_project_potential"
+    )
+
+    assumptions = project_potential[
+        "assumptions"
+    ]
+
     lines = [
         "",
-        "Potential of the project area",
-        "-----------------------------",
+        potential_heading,
+        "-" * len(potential_heading),
         (
-            "Suitable solar area: "
-            f"{project_potential['solar_area_ha']:.2f} ha"
+            report_text(
+                "report_suitable_solar_area"
+            )
+            + ": "
+            + f"{project_potential['solar_area_ha']:.2f} ha"
         ),
         (
-            "Estimated solar capacity: "
-            f"{project_potential['solar_capacity_mwp']:.2f} MWp"
+            report_text(
+                "report_estimated_solar_capacity"
+            )
+            + ": "
+            + f"{project_potential['solar_capacity_mwp']:.2f} MWp"
         ),
         (
-            "Suitable wind area: "
-            f"{project_potential['wind_area_ha']:.2f} ha"
+            report_text(
+                "report_suitable_wind_area"
+            )
+            + ": "
+            + f"{project_potential['wind_area_ha']:.2f} ha"
         ),
         (
-            "Estimated wind turbines: "
-            f"{project_potential['wind_turbines']}"
+            report_text(
+                "report_estimated_wind_turbines"
+            )
+            + ": "
+            + str(
+                project_potential[
+                    "wind_turbines"
+                ]
+            )
         ),
         (
-            "Wind turbine capacity: "
-            f"{project_potential['wind_turbine_capacity_mw']:.2f} "
-            "MW per turbine"
+            report_text(
+                "report_wind_turbine_capacity"
+            )
+            + ": "
+            + f"{project_potential['wind_turbine_capacity_mw']:.2f} "
+            + report_text(
+                "report_mw_per_turbine"
+            )
         ),
         (
-            "Estimated wind capacity: "
-            f"{project_potential['wind_capacity_mw']:.2f} MW"
+            report_text(
+                "report_estimated_wind_capacity"
+            )
+            + ": "
+            + f"{project_potential['wind_capacity_mw']:.2f} MW"
         ),
         (
-            "Combined project capacity: "
-            f"{project_potential['combined_capacity_mw']:.2f} MW"
+            report_text(
+                "report_combined_project_capacity"
+            )
+            + ": "
+            + f"{project_potential['combined_capacity_mw']:.2f} MW"
         ),
         (
-            "Estimated AC capacity: "
-            f"{project_potential['estimated_ac_capacity_mw']:.2f} MW"
+            report_text(
+                "report_estimated_ac_capacity"
+            )
+            + ": "
+            + f"{project_potential['estimated_ac_capacity_mw']:.2f} MW"
         ),
         (
-            "Estimated BESS capacity: "
-            f"{project_potential['bess_capacity_mw']:.0f} MW"
+            report_text(
+                "report_estimated_bess_capacity"
+            )
+            + ": "
+            + f"{project_potential['bess_capacity_mw']:.0f} MW"
         ),
         "",
-        "Potential calculation assumptions",
-        (
-            "Solar power density: "
-            f"{project_potential['assumptions']['solar_mwp_per_hectare']:.2f} "
-            "MWp/ha"
+        report_text(
+            "report_potential_calculation_assumptions"
         ),
         (
-            "Wind area per turbine: "
-            f"{project_potential['assumptions']['wind_area_per_turbine_ha']:.2f} "
-            "ha"
+            report_text(
+                "report_solar_power_density"
+            )
+            + ": "
+            + f"{assumptions['solar_mwp_per_hectare']:.2f} MWp/ha"
         ),
         (
-            "Minimum area for one wind turbine: "
-            f"{project_potential['assumptions']['wind_single_turbine_minimum_ha']:.2f} "
-            "ha"
+            report_text(
+                "report_wind_area_per_turbine"
+            )
+            + ": "
+            + f"{assumptions['wind_area_per_turbine_ha']:.2f} ha"
         ),
         (
-            "DC/AC ratio: "
-            f"{project_potential['assumptions']['dc_ac_ratio']:.2f}"
+            report_text(
+                "report_minimum_wind_turbine_area"
+            )
+            + ": "
+            + f"{assumptions['wind_single_turbine_minimum_ha']:.2f} ha"
         ),
         (
-            "BESS share of AC capacity: "
-            f"{project_potential['assumptions']['bess_ac_capacity_fraction'] * 100:.1f}%"
+            report_text(
+                "report_dc_ac_ratio"
+            )
+            + ": "
+            + f"{assumptions['dc_ac_ratio']:.2f}"
+        ),
+        (
+            report_text(
+                "report_bess_share"
+            )
+            + ": "
+            + f"{assumptions['bess_ac_capacity_fraction'] * 100:.1f}%"
         ),
     ]
 
@@ -1000,10 +1394,14 @@ def append_grid_proximity_summary(
         "project_report.md",
     )
 
+    grid_heading = report_text(
+        "report_grid_information"
+    )
+
     lines = [
         "",
-        "Power-line and transformer information",
-        "--------------------------------------",
+        grid_heading,
+        "-" * len(grid_heading),
     ]
 
     if (
@@ -1012,8 +1410,9 @@ def append_grid_proximity_summary(
         == "unavailable"
     ):
         lines.append(
-            "Grid-proximity data is not configured "
-            "for this country."
+            report_text(
+                "report_grid_not_configured"
+            )
         )
 
     elif (
@@ -1021,8 +1420,9 @@ def append_grid_proximity_summary(
         == "no_features"
     ):
         lines.append(
-            "No configured grid infrastructure was found "
-            "within the available surrounding context data."
+            report_text(
+                "report_no_grid_infrastructure"
+            )
         )
 
     else:
@@ -1037,9 +1437,8 @@ def append_grid_proximity_summary(
             distance_m = result["distance_m"]
 
             if result.get("crossing"):
-                distance_text = (
-                    "crossing or within the configured "
-                    "proximity threshold"
+                distance_text = report_text(
+                    "report_grid_crossing"
                 )
 
             elif distance_m < 1000:
@@ -1062,7 +1461,8 @@ def append_grid_proximity_summary(
 
             if voltage_kv is not None:
                 details.append(
-                    f"voltage {voltage_kv:.0f} kV"
+                    report_text("report_voltage")
+                    + f" {voltage_kv:.0f} kV"
                 )
 
             primary_voltage_kv = result.get(
@@ -1071,8 +1471,10 @@ def append_grid_proximity_summary(
 
             if primary_voltage_kv is not None:
                 details.append(
-                    "primary voltage "
-                    f"{primary_voltage_kv:.0f} kV"
+                    report_text(
+                        "report_primary_voltage"
+                    )
+                    + f" {primary_voltage_kv:.0f} kV"
                 )
 
             secondary_voltage_kv = result.get(
@@ -1081,8 +1483,10 @@ def append_grid_proximity_summary(
 
             if secondary_voltage_kv is not None:
                 details.append(
-                    "secondary voltage "
-                    f"{secondary_voltage_kv:.0f} kV"
+                    report_text(
+                        "report_secondary_voltage"
+                    )
+                    + f" {secondary_voltage_kv:.0f} kV"
                 )
 
             lines.append(
@@ -1100,16 +1504,19 @@ def append_grid_proximity_summary(
                 [
                     "",
                     (
-                        "Configured crossing/proximity "
-                        "threshold: "
-                        f"{crossing_distance_m:.0f} m"
+                        report_text(
+                            "report_grid_threshold"
+                        )
+                        + ": "
+                        + f"{crossing_distance_m:.0f} m"
                     ),
                 ]
             )
 
         lines.append(
-            "Distances are limited to infrastructure "
-            "available within the processed context area."
+            report_text(
+                "report_grid_distance_limitation"
+            )
         )
 
     with open(
@@ -1144,10 +1551,14 @@ def append_soil_depth_summary(
         "project_report.md",
     )
 
+    soil_depth_heading = report_text(
+        "report_soil_depth_by_type"
+    )
+
     lines = [
         "",
-        "Soil depth by soil type",
-        "-----------------------",
+        soil_depth_heading,
+        "-" * len(soil_depth_heading),
     ]
 
     if settings is None:
@@ -1165,15 +1576,15 @@ def append_soil_depth_summary(
 
     if not soil_depth_result:
         lines.append(
-            "Soil-depth analysis was not performed."
+            report_text(
+                "report_soil_depth_not_performed"
+            )
         )
 
     elif soil_depth_result.get("status") != "available":
         lines.append(
-            soil_depth_result.get(
-                "message",
-                "No soil-depth information was available "
-                "for the analysis site.",
+            report_text(
+                "report_no_soil_depth_information"
             )
         )
 
@@ -1185,19 +1596,27 @@ def append_soil_depth_summary(
 
         if not results:
             lines.append(
-                "No soil types with valid soil-depth data "
-                "were found."
+                report_text(
+                    "report_no_valid_soil_types"
+                )
             )
 
         for result in results:
             soil_type = result.get(
-                "soil_type",
-                "Unknown soil type",
+                "soil_type"
             )
+
+            if not soil_type:
+                soil_type = report_text(
+                    "report_unknown_soil_type"
+                )
 
             if result.get("status") != "available":
                 lines.append(
-                    f"{soil_type}: no valid soil-depth data"
+                    f"{soil_type}: "
+                    + report_text(
+                        "report_no_valid_soil_depth"
+                    )
                 )
                 continue
 
@@ -1228,16 +1647,15 @@ def append_soil_depth_summary(
 
             lines.append(
                 f"{soil_type}: "
-                f"{minimum_m_text}–{maximum_m_text} m "
-                f"({minimum_cm_text}–{maximum_cm_text} cm)"
+                f"{minimum_m_text}\u2013{maximum_m_text} m "
+                f"({minimum_cm_text}\u2013{maximum_cm_text} cm)"
             )
 
         lines.extend(
             [
                 "",
-                (
-                    "Source: SGU Jorddjupsmodell. Values represent "
-                    "estimated depth to bedrock."
+                report_text(
+                    "report_soil_depth_source_note"
                 ),
             ]
         )
@@ -1277,7 +1695,9 @@ def append_custom_estates_summary(
 
     lines = [
         "",
-        "Estates intersecting the custom analysis area",
+        report_text(
+            "report_custom_estates_heading"
+        ),
         "----------------------------------------------",
     ]
 
@@ -1309,10 +1729,16 @@ def append_custom_estates_summary(
                     [
                         estate_name,
                         (
-                            f"Overlap: "
-                            f"{overlap_area_ha:.2f} ha "
-                            f"({analysis_percentage:.2f}% "
-                            f"of analysis area)"
+                            report_text(
+                                "report_overlap"
+                            )
+                            + ": "
+                            + f"{overlap_area_ha:.2f} ha "
+                            + f"({analysis_percentage:.2f}% "
+                            + report_text(
+                                "report_of_analysis_area"
+                            )
+                            + ")"
                         ),
                         "",
                     ]
@@ -1321,9 +1747,8 @@ def append_custom_estates_summary(
         else:
             lines.extend(
                 [
-                    (
-                        "No named estate geometries intersect "
-                        "the custom analysis area."
+                    report_text(
+                        "report_no_intersecting_estates"
                     ),
                     "",
                 ]
@@ -1344,21 +1769,37 @@ def append_custom_estates_summary(
         )
 
         lines.append(
-            "Unregistered or unmatched area: "
-            f"{unmatched_area_ha:.2f} ha "
-            f"({unmatched_percentage:.2f}%)"
+            report_text(
+                "report_unmatched_area"
+            )
+            + ": "
+            + f"{unmatched_area_ha:.2f} ha "
+            + f"({unmatched_percentage:.2f}%)"
         )
 
     elif status == "error":
+        error_message = (
+            custom_estates_result.get(
+                "error"
+            )
+            or report_text(
+                "report_unknown_error"
+            )
+        )
+
         lines.append(
-            "Estate identification failed: "
-            f"{custom_estates_result.get('error', 'unknown error')}"
+            report_text(
+                "report_estate_identification_failed"
+            )
+            + ": "
+            + str(error_message)
         )
 
     else:
         lines.append(
-            "Estate identification is unavailable "
-            "for this analysis area."
+            report_text(
+                "report_estate_identification_unavailable"
+            )
         )
 
     with open(

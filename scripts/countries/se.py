@@ -16,6 +16,118 @@ It does not, by itself, determine whether a layer is an exclusion.
 COUNTRY_CODE = "SE"
 COUNTRY_NAME = "Sweden"
 
+ESTATE_CONFIG = {
+    "schema": "se",
+    "table": "estates",
+    "geometry_column": "geom",
+    "key_column": "id",
+    "srid": 3006,
+    "group_fields": (
+        "borough",
+        "sector",
+        "segment",
+    ),
+        "display_fields": (
+        "borough",
+        "sector",
+        "segment",
+    ),
+}
+
+
+def parse_estate_reference(value):
+    """
+    Interpret a complete Swedish property designation.
+
+    The final word is the segment. Every possible division of
+    the preceding words between borough and sector is returned.
+    PostgreSQL then determines which combination actually exists.
+    """
+
+    tokens = value.strip().upper().split()
+
+    if len(tokens) < 3:
+        raise ValueError(
+            "A Swedish estate must contain a borough, "
+            "sector and segment."
+        )
+
+    segment = tokens[-1]
+    name_tokens = tokens[:-1]
+
+    filter_groups = []
+
+    for split_position in range(
+        1,
+        len(name_tokens),
+    ):
+        borough = " ".join(
+            name_tokens[:split_position]
+        )
+
+        sector = " ".join(
+            name_tokens[split_position:]
+        )
+
+        filter_groups.append(
+            {
+                "borough": borough,
+                "sector": sector,
+                "segment": segment,
+            }
+        )
+
+    display_name = " ".join(tokens)
+
+    return {
+        "display_name": display_name,
+        "folder_name": display_name.replace(
+            ":",
+            "-",
+        ),
+        "filter_groups": filter_groups,
+    }
+
+_LAYER_TABLE_OVERRIDES = {
+    "powerlines-null.shp": "powerlines_unknown",
+    "power_stations_poly.shp": "power_stations",
+    "nature_memory_points_poly.shp": (
+        "nature_memory_points"
+    ),
+    "misc_poly.shp": "miscellaneous",
+    "peat_extractions_poly.shp": "peat_extractions",
+    "weather_station_temp_poly.shp": (
+        "weather_station_temperature"
+    ),
+    "weather_station_wind_poly.shp": (
+        "weather_station_wind"
+    ),
+    "rest_stop_poly.shp": "rest_stops",
+    "water_flow_poly.shp": "water_flow",
+    "ancient_remains_points_poly.shp": (
+        "ancient_remains_points"
+    ),
+    "inaccessable.shp": "inaccessible",
+    "residental_buildings.shp": (
+        "residential_buildings"
+    ),
+    "accessory_building.shp": (
+        "accessory_buildings"
+    ),
+    "barn.shp": "barns",
+    "other_building.shp": "other_buildings",
+    "public_function.shp": "public_functions",
+    "air_trafic_areas.shp": "air_traffic_areas",
+    "municip_borders.shp": "municipality_borders",
+}
+
+
+_LAYER_KEY_OVERRIDES = {
+    "estates": "id",
+    "soil_types": "id",
+    "ditches": "primaryindex",
+}
+
 
 def _layer(
     source,
@@ -25,17 +137,42 @@ def _layer(
     wind_buffer_m,
 ):
     """
-    Create a layer definition with named fields.
-
-    The keyword-only buffer arguments make the two distances
-    explicit when adding or editing entries.
+    Create a country-layer definition, including its
+    corresponding indexed PostGIS dataset.
     """
+
+    source_stem = source.rsplit(
+        ".",
+        1,
+    )[0]
+
+    default_table = source_stem.replace(
+        "-",
+        "_",
+    )
+
+    table = _LAYER_TABLE_OVERRIDES.get(
+        source,
+        default_table,
+    )
+
+    key_column = _LAYER_KEY_OVERRIDES.get(
+        table,
+        "ogc_fid",
+    )
 
     return {
         "source": source,
         "name": name,
         "solar_buffer_m": solar_buffer_m,
         "wind_buffer_m": wind_buffer_m,
+        "database": {
+            "schema": "se",
+            "table": table,
+            "geometry_column": "geom",
+            "key_column": key_column,
+            "srid": 3006,
+        },
     }
 
 
@@ -525,6 +662,13 @@ METEOROLOGY_SETTINGS = {
         "value_field": "Z",
         "measurement_height_m": 140,
         "source_name": "Swedish wind map",
+        "database": {
+            "schema": "se",
+            "table": "wind_map",
+            "geometry_column": "geom",
+            "key_column": "ogc_fid",
+            "srid": 3006,
+        },
     },
 
     "wind_load_field": "WINDLOAD",
@@ -536,6 +680,12 @@ METEOROLOGY_SETTINGS = {
             "name": "Average humidity",
             "unit": "%",
             "source_name": "Swedish meteorological raster",
+            "database": {
+                "schema": "se",
+                "table": "humidity",
+                "raster_column": "rast",
+                "srid": 3006,
+            },
         },
 
         "temperature_fallback": {
@@ -543,6 +693,12 @@ METEOROLOGY_SETTINGS = {
             "name": "Average air temperature",
             "unit": "°C",
             "source_name": "Swedish meteorological raster",
+            "database": {
+                "schema": "se",
+                "table": "temperature",
+                "raster_column": "rast",
+                "srid": 3006,
+            },
         },
 
         "air_pressure": {
@@ -550,6 +706,12 @@ METEOROLOGY_SETTINGS = {
             "name": "Average air pressure",
             "unit": "hPa",
             "source_name": "Swedish meteorological raster",
+            "database": {
+                "schema": "se",
+                "table": "air_pressure",
+                "raster_column": "rast",
+                "srid": 3006,
+            },
         },
 
         "snow_depth": {
@@ -562,6 +724,15 @@ METEOROLOGY_SETTINGS = {
                 "secondary_unit": "cm",
                 "secondary_multiplier": 100,
                 "secondary_precision": 2,
+                "database": {
+                    "schema": "se",
+                    "table": (
+                        "snow_depth_"
+                        f"{month_name.lower()}"
+                    ),
+                    "raster_column": "rast",
+                    "srid": 3006,
+                },
             }
             for month_name, month_code
             in SNOW_DEPTH_MONTHS.items()
@@ -571,6 +742,11 @@ METEOROLOGY_SETTINGS = {
 
 POLITICAL_SETTINGS = {
     "source": "parties.csv",
+
+    "database": {
+        "schema": "se",
+        "table": "municipality_politics",
+    },
     "site_municipality_field": "BOROUGH",
     "csv_municipality_field": "Kommun",
     "control_field": "Kommunal Politiskt styre",
@@ -590,6 +766,14 @@ POLITICAL_SETTINGS = {
 
 BOS_SETTINGS = {
     "landcover_raster": "landcover.tif",
+
+    "landcover_database": {
+        "schema": "se",
+        "table": "landcover",
+        "raster_column": "rast",
+        "srid": 3006,
+    },
+
     "wet_soil_layer": "wet_soil.shp",
     "rocky_terrain_layer": "rocky_terrain.shp",
     "peat_quarry_layer": "peat_quarry.shp",
@@ -715,7 +899,13 @@ REDLISTED_SPECIES_SETTINGS = {
 SOIL_DEPTH_SETTINGS = {
     "raster_source": "soil_depth.tif",
 
-    # Name of the already processed country layer.
+    "database": {
+        "schema": "se",
+        "table": "soil_depth",
+        "raster_column": "rast",
+        "srid": 3006,
+    },
+
     "soil_layer_name": "Jordtyper",
 
     "soil_type_field": "TYPE",
@@ -732,4 +922,11 @@ SOIL_DEPTH_SETTINGS = {
 
     "metre_precision": 0,
     "centimetre_precision": 0,
+}
+
+DEM_CONFIG = {
+    "schema": "se",
+    "table": "dem",
+    "raster_column": "rast",
+    "srid": 3006,
 }

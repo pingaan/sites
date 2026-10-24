@@ -1,6 +1,21 @@
 import gc
 import os
 
+from scripts.translations import ui_text
+from scripts.layer_settings import (
+    apply_layer_settings,
+)
+from scripts.postgis_raster import (
+    download_dem_from_postgis,
+)
+from scripts.postgis_spatial import (
+    download_country_layers_from_postgis,
+    extract_intersecting_features,
+)
+from scripts.postgis_backend import (
+    extract_estate_from_postgis,
+)
+
 from scripts.run_id import create_run_id
 from scripts.output_package import (
     create_output_geopackage,
@@ -38,6 +53,7 @@ from scripts.municipality import (
 )
 from scripts.meteorology import (
     calculate_average_wind_speed,
+    calculate_postgis_site_raster_mean,
     calculate_site_raster_mean,
     read_site_load_values,
 )
@@ -61,9 +77,11 @@ from scripts.solar_resource import (
     collect_solargis_resources,
     get_site_centroid_wgs84,
 )
-from qgis.core import (QgsApplication, 
+from qgis.core import (
+    QgsApplication, 
     Qgis, 
-    QgsProject
+    QgsProject,
+    QgsVectorLayer
 )
 from scripts.country_config import load_country_config
 from scripts.basemap_settings import BASEMAPS
@@ -121,7 +139,6 @@ from scripts.paths import get_paths
 from scripts.crs import resolve_working_crs
 from scripts.site_context import (
     create_site_buffers,
-    extract_neighbouring_estates,
     group_neighbouring_estates,
     dissolve_neighbouring_groups,
     split_neighbouring_groups,
@@ -133,9 +150,6 @@ from scripts.site_context import (
 )
 from scripts.site_selection import (
     select_site_source,
-    parse_estate,
-    sequential_search,
-    extract_estate_features,
     merge_estate_features,
     dissolve_estate_features,
     split_estate_to_singleparts,
@@ -143,16 +157,74 @@ from scripts.site_selection import (
     calculate_estate_area,
     prepare_custom_polygon_source,
 )
+from scripts.layer_metadata import (
+    cache_needs_refresh,
+    update_layer_metadata_cache,
+)
 
 
-estate = ""
+estate = (
+    os.environ.get(
+        "SITES_ESTATE",
+        "434-415-1-226",
+    ).strip()
+    or None
+)
 
-#custom_polygon = None
-custom_polygon = (r"C:/Users/tobia/Documents/test.shp")
+custom_polygon = (
+    os.environ.get(
+        "SITES_CUSTOM_POLYGON",
+        "",
+    ).strip()
+    or None
+)
 
-def main():
+def run_analysis(runtime):
 
     settings = UserSettings()
+
+    supplied_country_code = (
+        os.environ.get(
+            "SITES_COUNTRY_CODE",
+            "",
+        )
+        .strip()
+        .upper()
+    )
+
+    if supplied_country_code:
+        settings.country_code = (
+            supplied_country_code
+        )
+
+    supplied_language = (
+        os.environ.get(
+            "SITES_LANGUAGE",
+            "",
+        )
+        .strip()
+        .lower()
+    )
+
+    if supplied_language:
+        if supplied_language not in {
+            "en",
+            "sv",
+            "fi",
+        }:
+            raise ValueError(
+                "Unsupported application language: "
+                f"{supplied_language!r}"
+            )
+
+        settings.language = (
+            supplied_language
+        )
+
+    print(
+        "Application language: "
+        f"{settings.language}"
+    )
 
     run_id = create_run_id()
 
@@ -163,11 +235,56 @@ def main():
     country_config = load_country_config(
         country_code=settings.country_code,
     )
+
+    if cache_needs_refresh():
+        print(
+            "Refreshing local layer metadata cache..."
+        )
+
+        try:
+            metadata_cache_path = (
+                update_layer_metadata_cache()
+            )
+
+            print(
+                "Layer metadata cache updated: "
+                f"{metadata_cache_path}"
+            )
+
+        except Exception as error:
+            print(
+                "Layer metadata cache could not be "
+                "updated; the existing local cache "
+                "will be retained."
+            )
+
+            print(
+                f"Metadata update error: {error}"
+            )
+
+    else:
+        print(
+            "Local layer metadata cache is current."
+        )
+
+    layer_definitions = apply_layer_settings(
+        country_code=settings.country_code,
+        layer_definitions=country_config.LAYERS,
+        style_resolver=getattr(
+            country_config,
+            "get_map_style",
+            None,
+        ),
+        language=settings.language,
+    )
+
     paths = get_paths()
 
     print("Starting solar site analysis...")
 
     qgs = initialize_qgis()
+
+    runtime["qgs"] = qgs
 
     cleanup_targets = []
     cleanup_folder_path = None
@@ -197,42 +314,27 @@ def main():
 
         if site_source["type"] == "estate":
 
-            match = parse_estate(
-                site_source["estate"]
-            )
-
-            print(
-                f"Searching for estate: {match}"
-            )
-
-            row_indices = sequential_search(
-                paths["csv_file"],
-                match,
-            )
-
-            if row_indices is None:
-                raise ValueError(
-                    f"No estate found for: "
-                    f"{site_source['estate']}"
+            estate_reference = (
+                country_config.parse_estate_reference(
+                    site_source["estate"]
                 )
-
-            print(
-                f"Estate located at indices: "
-                f"{row_indices}"
             )
 
-            site_data = extract_estate_features(
-                match=match,
-                row_indices=row_indices,
-                estates_layer_path=paths[
-                    "estates_layer"
-                ],
+            print(
+                "Searching for estate: "
+                f"{estate_reference['display_name']}"
+            )
+
+            site_data = extract_estate_from_postgis(
+                estate_config=(
+                    country_config.ESTATE_CONFIG
+                ),
+                estate_reference=estate_reference,
                 output_root=paths["pot_path"],
                 run_id=run_id,
             )
 
             site_data["source_type"] = "estate"
-            site_data["match"] = match
 
         elif site_source["type"] == "custom_polygon":
 
@@ -244,12 +346,9 @@ def main():
                         analysis_layer_path=site_source[
                             "polygon"
                         ],
-                        estates_layer_path=paths[
-                            "estates_layer"
-                        ],
-                        csv_file=paths[
-                            "csv_file"
-                        ],
+                        estate_config=(
+                            country_config.ESTATE_CONFIG
+                        ),
                     )
                 )
 
@@ -355,6 +454,38 @@ def main():
             folder_path=site_data["folder_path"],
         )
 
+        site_area_layer = QgsVectorLayer(
+            site_layer_path,
+            "Analysis area check",
+            "ogr",
+        )
+
+        if not site_area_layer.isValid():
+            raise RuntimeError(
+                "Failed to load the analysis site "
+                "for its area check."
+            )
+
+        site_area_ha = sum(
+            feature.geometry().area()
+            for feature in site_area_layer.getFeatures()
+            if (
+                feature.geometry() is not None
+                and not feature.geometry().isEmpty()
+            )
+        ) / 10000
+
+        print(
+            f"Analysis site area: "
+            f"{site_area_ha:.2f} ha"
+        )
+
+        if site_area_ha > 500:
+            print(
+                "LARGE_ANALYSIS_AREA_WARNING:"
+                f"{site_area_ha:.2f}"
+            )
+
         buffer_paths = create_site_buffers(
             site_layer_path=site_layer_path,
             temp_path=site_data["temp_path"],
@@ -418,14 +549,30 @@ def main():
                 "feature_count": 0,
             }
 
-        neighbouring_estates_path = extract_neighbouring_estates(
-            estates_layer_path=paths["estates_layer"],
-            hundred_m_buffer_path=buffer_paths["100m"],
-            folder_path=site_data["folder_path"],
+        neighbouring_estates_path = (
+            extract_intersecting_features(
+                dataset_config=(
+                    country_config.ESTATE_CONFIG
+                ),
+                intersection_layer_path=(
+                    buffer_paths["100m"]
+                ),
+                output_path=os.path.join(
+                    site_data["folder_path"],
+                    "neighbouring_estates.shp",
+                ),
+                layer_name="Neighbouring estates",
+            )
         )
 
         neighbour_groups = group_neighbouring_estates(
-            neighbouring_estates_path=neighbouring_estates_path,
+            neighbouring_estates_path=(
+                neighbouring_estates_path
+            ),
+            group_fields=(
+                country_config
+                .ESTATE_CONFIG["group_fields"]
+            ),
         )
 
         dissolved_neighbour_paths = dissolve_neighbouring_groups(
@@ -465,17 +612,14 @@ def main():
             layer_path=site_layer_path,
         )
 
-        dem_tile_paths = select_dem_tiles(
-            site_extent=dem_search_extent,
-            data_path=paths["data_path"],
-            dem_path=paths["path_dem"],
-            temp_path=site_data["temp_path"],
-            dem_index_crs=paths["dem_index_crs"],
-        )
-
-        merged_dem_path = merge_dem_tiles(
-            dem_tile_paths=dem_tile_paths,
-            temp_path=site_data["temp_path"],
+        merged_dem_path = (
+            download_dem_from_postgis(
+                site_extent=dem_search_extent,
+                dem_config=(
+                    country_config.DEM_CONFIG
+                ),
+                temp_path=site_data["temp_path"],
+            )
         )
 
         clipped_dem_path = clip_dem_to_site(
@@ -570,9 +714,17 @@ def main():
             interval_m=settings.contour_interval_m,
         )
 
+        country_data_path = (
+            download_country_layers_from_postgis(
+                layer_definitions=country_config.LAYERS,
+                intersection_layer_path=buffer_paths["5km"],
+                temp_path=site_data["temp_path"],
+            )
+        )
+
         clipped_country_layers = clip_country_layers(
             layer_definitions=country_config.LAYERS,
-            data_path=paths["data_path"],
+            data_path=country_data_path,
             context_polygon_path=buffer_paths["5km"],
             temp_path=site_data["temp_path"],
             target_crs=working_crs,
@@ -595,16 +747,60 @@ def main():
             folder_path=site_data["folder_path"],
         )
 
+        soil_depth_settings = getattr(
+            country_config,
+            "SOIL_DEPTH_SETTINGS",
+            None,
+        )
+
+        if soil_depth_settings is not None:
+            soil_depth_settings = dict(
+                soil_depth_settings
+            )
+
+            soil_depth_database = (
+                soil_depth_settings.get("database")
+            )
+
+            if soil_depth_database is None:
+                raise ValueError(
+                    "Soil-depth settings have no "
+                    "PostGIS database configuration."
+                )
+
+            soil_depth_raster_path = (
+                download_dem_from_postgis(
+                    site_extent=dem_search_extent,
+                    dem_config=soil_depth_database,
+                    temp_path=site_data["temp_path"],
+                    output_filename=(
+                        "postgis_soil_depth.tif"
+                    ),
+                    raster_label="soil-depth raster",
+                )
+            )
+
+            soil_depth_settings[
+                "raster_source"
+            ] = os.path.basename(
+                soil_depth_raster_path
+            )
+
+            soil_depth_data_path = (
+                site_data["temp_path"]
+            )
+
+        else:
+            soil_depth_data_path = paths[
+                "data_path"
+            ]
+
         soil_depth_result = analyse_soil_depth_by_type(
             analysis_layer_path=site_layer_path,
             country_layer_outputs=country_layer_outputs,
-            data_path=paths["data_path"],
+            data_path=soil_depth_data_path,
             temp_path=site_data["temp_path"],
-            settings=getattr(
-                country_config,
-                "SOIL_DEPTH_SETTINGS",
-                None,
-            ),
+            settings=soil_depth_settings,
         )
 
         solar_remaining_path = subtract_solar_constraints(
@@ -683,11 +879,13 @@ def main():
         map_data = prepare_map_project(
             working_crs=working_crs,
             title=site_data["folder_name"],
+            language=settings.language,
         )
 
         basemap_layer_ids = add_basemaps(
             map_data=map_data,
             basemap_definitions=BASEMAPS,
+            language=settings.language,
         )
 
         analysis_layer_ids = add_analysis_outputs(
@@ -695,6 +893,7 @@ def main():
             site_layer_path=site_layer_path,
             solar_candidate_path=solar_candidate_path,
             wind_candidate_path=wind_candidate_path,
+            language=settings.language,
         )
 
         country_map_layer_ids = add_country_outputs(
@@ -706,6 +905,7 @@ def main():
                 None,
             ),
             svg_path=paths["svg_path"],
+            language=settings.language,
         )
 
         grid_proximity_result = analyse_grid_proximity(
@@ -723,6 +923,7 @@ def main():
             neighbouring_estates_path=final_neighbours_path,
             ineligible_terrain_path=filtered_ineligible_terrain_path,
             contour_lines_path=contour_lines_path,
+            language=settings.language,
         )
 
         redlisted_species_layer_id = (
@@ -731,6 +932,7 @@ def main():
                 redlisted_species_result=(
                     redlisted_species_result
                 ),
+                language=settings.language,
             )
         )
 
@@ -798,7 +1000,6 @@ def main():
         )
 
         solar_resource_data = collect_solargis_resources(
-            raster_paths=paths["solargis_rasters"],
             longitude=site_centroid["longitude"],
             latitude=site_centroid["latitude"],
         )
@@ -851,14 +1052,46 @@ def main():
             {},
         )
 
+        wind_settings = (
+            meteorology_settings.get(
+                "wind_speed"
+            )
+        )
+
+        wind_source_path = None
+
+        if wind_settings:
+            wind_database = (
+                wind_settings.get("database")
+            )
+
+            if wind_database is None:
+                raise ValueError(
+                    "Wind-speed settings have no "
+                    "PostGIS database configuration."
+                )
+
+            wind_source_path = os.path.join(
+                site_data["temp_path"],
+                "postgis_wind_map.shp",
+            )
+
+            extract_intersecting_features(
+                dataset_config=wind_database,
+                intersection_layer_path=(
+                    site_layer_path
+                ),
+                output_path=wind_source_path,
+                layer_name="Wind-speed source",
+                allow_empty=True,
+            )
+
         average_wind_speed = (
             calculate_average_wind_speed(
                 site_layer_path=site_layer_path,
-                data_path=paths["data_path"],
+                source_path=wind_source_path,
                 temp_path=site_data["temp_path"],
-                wind_settings=meteorology_settings.get(
-                    "wind_speed"
-                ),
+                wind_settings=wind_settings,
             )
         )
 
@@ -891,24 +1124,36 @@ def main():
             {},
         )
 
-        humidity_result = calculate_site_raster_mean(
-            site_layer_path=site_layer_path,
-            data_path=paths["data_path"],
-            temp_path=site_data["temp_path"],
-            raster_settings=raster_data_settings.get(
-                "humidity"
-            ),
-            output_name="meteorology_humidity.tif",
+        humidity_result = (
+            calculate_postgis_site_raster_mean(
+                site_layer_path=site_layer_path,
+                site_extent=dem_search_extent,
+                temp_path=site_data["temp_path"],
+                raster_settings=(
+                    raster_data_settings.get(
+                        "humidity"
+                    )
+                ),
+                output_name=(
+                    "meteorology_humidity.tif"
+                ),
+            )
         )
 
-        air_pressure_result = calculate_site_raster_mean(
-            site_layer_path=site_layer_path,
-            data_path=paths["data_path"],
-            temp_path=site_data["temp_path"],
-            raster_settings=raster_data_settings.get(
-                "air_pressure"
-            ),
-            output_name="meteorology_air_pressure.tif",
+        air_pressure_result = (
+            calculate_postgis_site_raster_mean(
+                site_layer_path=site_layer_path,
+                site_extent=dem_search_extent,
+                temp_path=site_data["temp_path"],
+                raster_settings=(
+                    raster_data_settings.get(
+                        "air_pressure"
+                    )
+                ),
+                output_name=(
+                    "meteorology_air_pressure.tif"
+                ),
+            )
         )
 
         # -------------------------------------------------
@@ -924,12 +1169,16 @@ def main():
             temperature_result = {
                 "name": "Average air temperature",
                 "value": solargis_temperature["value"],
-                "unit": solargis_temperature["unit"],
-                "source": solargis_temperature["source"],
-                "status": solargis_temperature["status"],
-                "output_path": solargis_temperature.get(
-                    "raster_path"
+                "unit": solargis_temperature.get(
+                    "unit",
+                    "°C",
                 ),
+                "source": solargis_temperature.get(
+                    "source",
+                    "Global Solar Atlas",
+                ),
+                "status": "available",
+                "output_path": None,
             }
 
             print(
@@ -946,12 +1195,14 @@ def main():
             )
 
             temperature_result = (
-                calculate_site_raster_mean(
+                calculate_postgis_site_raster_mean(
                     site_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    site_extent=dem_search_extent,
                     temp_path=site_data["temp_path"],
-                    raster_settings=raster_data_settings.get(
-                        "temperature_fallback"
+                    raster_settings=(
+                        raster_data_settings.get(
+                            "temperature_fallback"
+                        )
                     ),
                     output_name=(
                         "meteorology_temperature.tif"
@@ -979,9 +1230,9 @@ def main():
             )
 
             snow_depth_results[month_name] = (
-                calculate_site_raster_mean(
+                calculate_postgis_site_raster_mean(
                     site_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    site_extent=dem_search_extent,
                     temp_path=site_data["temp_path"],
                     raster_settings=month_settings,
                     output_name=output_name,
@@ -1009,7 +1260,6 @@ def main():
         political_result = (
             analyse_municipality_politics(
                 site_layer_path=site_layer_path,
-                data_path=paths["data_path"],
                 political_settings=getattr(
                     country_config,
                     "POLITICAL_SETTINGS",
@@ -1050,10 +1300,36 @@ def main():
         bos_coverage_path = None
 
         if bos_result["status"] == "ready":
+            landcover_database = (
+                bos_settings.get(
+                    "landcover_database"
+                )
+            )
+
+            if landcover_database is None:
+                raise ValueError(
+                    "BoS settings have no PostGIS "
+                    "land-cover configuration."
+                )
+
+            download_dem_from_postgis(
+                site_extent=dem_search_extent,
+                dem_config=landcover_database,
+                temp_path=site_data["temp_path"],
+                output_filename=(
+                    bos_settings[
+                        "landcover_raster"
+                    ]
+                ),
+                raster_label=(
+                    "BoS land-cover raster"
+                ),
+            )
+
             bos_landcover_result = (
                 prepare_bos_landcover(
                     analysis_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    data_path=site_data["temp_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1067,7 +1343,7 @@ def main():
                             "landcover_path"
                         ]
                     ),
-                    data_path=paths["data_path"],
+                    data_path=site_data["folder_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1076,7 +1352,7 @@ def main():
             bos_override_results = (
                 prepare_bos_override_layers(
                     analysis_layer_path=site_layer_path,
-                    data_path=paths["data_path"],
+                    data_path=site_data["folder_path"],
                     temp_path=site_data["temp_path"],
                     bos_settings=bos_settings,
                 )
@@ -1114,12 +1390,6 @@ def main():
                 bos_settings=bos_settings,
             )
 
-            bos_summary = summarise_bos_coverage(
-                analysis_layer_path=site_layer_path,
-                bos_priority_result=bos_priority_result,
-                bos_settings=bos_settings,
-            )
-
             bos_coverage_path = create_bos_coverage_layer(
                 analysis_layer_path=site_layer_path,
                 bos_priority_result=bos_priority_result,
@@ -1137,6 +1407,7 @@ def main():
         bos_map_layer_id = add_bos_coverage(
             map_data=map_data,
             bos_coverage_path=bos_coverage_path,
+            language=settings.language,
         )
 
         # -------------------------------------------------
@@ -1146,37 +1417,58 @@ def main():
         final_layer_definitions = [
             {
                 "key": "analysis_site",
-                "name": "Analysis site",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_analysis_site",
+                ),
                 "path": site_layer_path,
             },
             {
                 "key": "solar_candidate",
-                "name": "Solar candidate area",
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_solar_candidate",
+                ),
                 "path": solar_candidate_path,
             },
             {
                 "key": "wind_candidate",
-                "name": "Wind candidate area",
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_wind_candidate",
+                ),
                 "path": wind_candidate_path,
             },
             {
                 "key": "neighbouring_estates",
-                "name": "Neighbouring estates",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_neighbouring_estates",
+                ),
                 "path": final_neighbours_path,
             },
             {
                 "key": "ineligible_terrain",
-                "name": "Ineligible terrain",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_ineligible_terrain",
+                ),
                 "path": filtered_ineligible_terrain_path,
             },
             {
                 "key": "contour_lines",
-                "name": "Contour lines",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_contour_lines",
+                ),
                 "path": contour_lines_path,
             },
             {
                 "key": "bos_coverage",
-                "name": "BoS coverage",
+                "name": ui_text(
+                    settings.language,
+                    "package_layer_bos_coverage",
+                ),
                 "path": bos_coverage_path,
             },
         ]
@@ -1195,7 +1487,10 @@ def main():
                     "key": (
                         f"country_{number:03d}"
                     ),
-                    "name": definition["name"],
+                    "name": definition.get(
+                        "display_name",
+                        definition["name"],
+                    ),
                     "path": layer_output.get(
                         "output_path"
                     ),
@@ -1216,8 +1511,9 @@ def main():
         final_layer_definitions.append(
             {
                 "key": "redlisted_species",
-                "name": (
-                    "Red-listed species observations"
+                "name": ui_text(
+                    settings.language,
+                    "project_layer_redlisted_species",
                 ),
                 "path": redlisted_output_path,
             }
@@ -1255,7 +1551,7 @@ def main():
 
         report_path = os.path.join(
             site_data["folder_path"],
-            f"prints ({site_data['folder_name']}).txt",
+            "project_report.md",
         )
 
         cleanup_plan = cleanup_analysis_outputs(
@@ -1283,29 +1579,62 @@ def main():
         )
 
     finally:
-        neighbour_groups = None
+        # The outer main function performs QGIS teardown after
+        # this function's local layer objects have been released.
+        pass
 
-        # Release references to layer-tree groups before
-        # clearing them.
-        map_data = None
+    return {
+        "targets": cleanup_targets,
+        "folder_path": cleanup_folder_path,
+    }
 
-        QgsProject.instance().clear()
+def main():
+    runtime = {}
 
-        gc.collect()
+    cleanup_result = {
+        "targets": [],
+        "folder_path": None,
+    }
 
-        shutdown_qgis(qgs)
-
-    print("QGIS shut down cleanly.")
-
-    if (
-        cleanup_targets
-        and cleanup_folder_path
-    ):
-        remove_cleanup_targets(
-            folder_path=cleanup_folder_path,
-            removal_targets=cleanup_targets,
+    try:
+        cleanup_result = run_analysis(
+            runtime
         )
 
+    finally:
+        qgs = runtime.pop(
+            "qgs",
+            None,
+        )
+
+        if qgs is not None:
+            QgsProject.instance().clear()
+
+            gc.collect()
+
+            shutdown_qgis(qgs)
+
+            qgs = None
+
+            gc.collect()
+
+    print(
+        "QGIS shut down cleanly."
+    )
+
+    cleanup_targets = cleanup_result[
+        "targets"
+    ]
+
+    cleanup_folder_path = cleanup_result[
+        "folder_path"
+    ]
+
+    if cleanup_targets and cleanup_folder_path:
+        remove_cleanup_targets(
+            cleanup_folder_path,
+            cleanup_targets,
+        )
 
 if __name__ == "__main__":
     main()

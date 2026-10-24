@@ -158,7 +158,10 @@ def extract_neighbouring_estates(
 
     return output_path
 
-def group_neighbouring_estates(neighbouring_estates_path):
+def group_neighbouring_estates(
+    neighbouring_estates_path,
+    group_fields,
+):
     """
     Group extracted estate features by BOROUGH, SECTOR and SEGMENT.
 
@@ -178,10 +181,8 @@ def group_neighbouring_estates(neighbouring_estates_path):
             f"{neighbouring_estates_path}"
         )
 
-    required_fields = (
-        "BOROUGH",
-        "SECTOR",
-        "SEGMENT",
+    required_fields = tuple(
+        group_fields
     )
 
     missing_fields = [
@@ -198,10 +199,9 @@ def group_neighbouring_estates(neighbouring_estates_path):
     feature_groups = defaultdict(list)
 
     for feature in neighbours.getFeatures():
-        key = (
-            feature["BOROUGH"],
-            feature["SECTOR"],
-            feature["SEGMENT"],
+        key = tuple(
+            feature[field_name]
+            for field_name in required_fields
         )
 
         feature_groups[key].append(feature)

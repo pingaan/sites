@@ -2,6 +2,7 @@ from importlib import import_module
 
 
 COUNTRY_MODULES = {
+    "FI": "scripts.countries.fi",
     "SE": "scripts.countries.se",
 }
 

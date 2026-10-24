@@ -1,0 +1,496 @@
+import os
+import re
+
+
+"""
+Finnish dataset configuration.
+
+The screening buffers and thresholds are provisionally inherited
+from the Swedish configuration until Finland-specific parameters
+have been established.
+
+All distances are expressed in metres.
+A zero buffer means no additional buffer is applied.
+"""
+
+
+COUNTRY_CODE = "FI"
+COUNTRY_NAME = "Finland"
+
+
+ESTATE_CONFIG = {
+    "schema": "fi",
+    "table": "estates",
+    "geometry_column": "geom",
+    "key_column": "ogc_fid",
+    "srid": 3067,
+    "group_fields": (
+        "kiinteisto",
+    ),
+        "display_fields": (
+        "kiinteis_1",
+    ),
+}
+
+
+DEM_CONFIG = {
+    "schema": "fi",
+    "table": "dem",
+    "raster_column": "rast",
+    "srid": 3067,
+}
+
+
+def parse_estate_reference(value):
+    """
+    Interpret a Finnish cadastral identifier.
+
+    Accepted formats:
+        434-415-1-226
+        43441500010226
+    """
+
+    supplied_value = value.strip()
+
+    formatted_match = re.fullmatch(
+        r"(\d{1,3})\s*-\s*"
+        r"(\d{1,3})\s*-\s*"
+        r"(\d{1,4})\s*-\s*"
+        r"(\d{1,4})",
+        supplied_value,
+    )
+
+    if formatted_match:
+        municipality, village, estate, unit = (
+            formatted_match.groups()
+        )
+
+        municipality = municipality.zfill(3)
+        village = village.zfill(3)
+        estate = estate.zfill(4)
+        unit = unit.zfill(4)
+
+        normalized = (
+            municipality
+            + village
+            + estate
+            + unit
+        )
+
+    else:
+        normalized = re.sub(
+            r"\s+",
+            "",
+            supplied_value,
+        )
+
+        if not re.fullmatch(
+            r"\d{14}",
+            normalized,
+        ):
+            raise ValueError(
+                "A Finnish estate identifier must use "
+                "either 434-415-1-226 or the normalized "
+                "14-digit form 43441500010226."
+            )
+
+        municipality = normalized[0:3]
+        village = normalized[3:6]
+        estate = normalized[6:10]
+        unit = normalized[10:14]
+
+    display_name = (
+        f"{municipality}-"
+        f"{village}-"
+        f"{int(estate)}-"
+        f"{int(unit)}"
+    )
+
+    return {
+        "display_name": display_name,
+        "folder_name": display_name,
+        "filter_groups": [
+            {
+                "kiinteisto": normalized,
+            }
+        ],
+    }
+
+
+def _layer(
+    source,
+    name,
+    table,
+    *,
+    solar_buffer_m,
+    wind_buffer_m,
+    key_column="ogc_fid",
+):
+    """
+    Create one Finnish PostGIS layer definition.
+    """
+
+    return {
+        "source": source,
+        "name": name,
+        "solar_buffer_m": solar_buffer_m,
+        "wind_buffer_m": wind_buffer_m,
+        "database": {
+            "schema": "fi",
+            "table": table,
+            "geometry_column": "geom",
+            "key_column": key_column,
+            "srid": 3067,
+        },
+    }
+
+
+LAYERS = [
+    # Power infrastructure
+    _layer(
+        "powerlines-300-500.shp",
+        "300–500 kV ledning",
+        "powerlines_300_500",
+        solar_buffer_m=55,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "powerlines-220-300.shp",
+        "220–300 kV ledning",
+        "powerlines_220_300",
+        solar_buffer_m=55,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "powerlines-80-170.shp",
+        "80–170 kV ledning",
+        "powerlines_80_170",
+        solar_buffer_m=55,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "powerlines-10-80.shp",
+        "10–80 kV ledning",
+        "powerlines_10_80",
+        solar_buffer_m=55,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "powerlines-null.shp",
+        "Okänd ledning",
+        "powerlines_unknown",
+        solar_buffer_m=55,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "power_stations.shp",
+        "Transformatorstation",
+        "power_stations",
+        solar_buffer_m=15,
+        wind_buffer_m=300,
+    ),
+
+    # Property and transport
+    _layer(
+        "estates.shp",
+        "Fastighetskarta",
+        "estates",
+        solar_buffer_m=0,
+        wind_buffer_m=0,
+    ),
+    _layer(
+        "hiking_trails.shp",
+        "Vandringsled",
+        "hiking_trails",
+        solar_buffer_m=50,
+        wind_buffer_m=300,
+    ),
+    _layer(
+        "railway.shp",
+        "Järnväg",
+        "railway",
+        solar_buffer_m=15,
+        wind_buffer_m=350,
+        key_column="fid",
+    ),
+    _layer(
+        "roads.shp",
+        "Väg",
+        "roads",
+        solar_buffer_m=8,
+        wind_buffer_m=50,
+        key_column="fid",
+    ),
+    _layer(
+        "minor_roads.shp",
+        "Mindre väg",
+        "minor_roads",
+        solar_buffer_m=8,
+        wind_buffer_m=50,
+    ),
+    _layer(
+        "bike_lane.shp",
+        "Cykelbana",
+        "bike_lane",
+        solar_buffer_m=0,
+        wind_buffer_m=50,
+    ),
+
+    # Cultural and natural interests
+    _layer(
+        "ancient_remains_polygons.shp",
+        "Lämning",
+        "ancient_remains_polygons",
+        solar_buffer_m=10,
+        wind_buffer_m=10,
+    ),
+    _layer(
+        "building_heritage.shp",
+        "Byggnadsminne",
+        "building_heritage",
+        solar_buffer_m=10,
+        wind_buffer_m=10,
+    ),
+    _layer(
+        "cultural_reserve.shp",
+        "Kulturreservat",
+        "cultural_reserve",
+        solar_buffer_m=0,
+        wind_buffer_m=0,
+    ),
+    _layer(
+        "national_parks.shp",
+        "Nationalpark",
+        "national_parks",
+        solar_buffer_m=50,
+        wind_buffer_m=550,
+    ),
+    _layer(
+        "nature_conservations.shp",
+        "Naturvård",
+        "nature_conservations",
+        solar_buffer_m=50,
+        wind_buffer_m=550,
+    ),
+    _layer(
+        "nature_reserves.shp",
+        "Naturreservat",
+        "nature_reserves",
+        solar_buffer_m=50,
+        wind_buffer_m=550,
+    ),
+    _layer(
+        "rich_birdlife.shp",
+        "Rikt fågelliv",
+        "rich_birdlife",
+        solar_buffer_m=50,
+        wind_buffer_m=550,
+    ),
+    _layer(
+        "protected_water_areas.shp",
+        "Skyddsområde (vatten)",
+        "protected_water_areas",
+        solar_buffer_m=0,
+        wind_buffer_m=0,
+    ),
+    _layer(
+        "rivers.shp",
+        "Vattendrag",
+        "rivers",
+        solar_buffer_m=50,
+        wind_buffer_m=50,
+    ),
+    _layer(
+        "ditches.shp",
+        "Diken",
+        "ditches",
+        solar_buffer_m=0,
+        wind_buffer_m=0,
+    ),
+
+    # Land use
+    _layer(
+        "military_areas.shp",
+        "Militärt område",
+        "military_areas",
+        solar_buffer_m=50,
+        wind_buffer_m=50,
+    ),
+    _layer(
+        "arable_land.shp",
+        "Jordbruk",
+        "arable_land",
+        solar_buffer_m=6,
+        wind_buffer_m=6,
+    ),
+
+    # Buildings
+    _layer(
+        "buildings.shp",
+        "Byggnad (övrig)",
+        "buildings",
+        solar_buffer_m=50,
+        wind_buffer_m=50,
+    ),
+    _layer(
+        "residential_buildings.shp",
+        "Bostadshus",
+        "residential_buildings",
+        solar_buffer_m=50,
+        wind_buffer_m=1500,
+    ),
+]
+
+
+MAP_COLORS = {
+    "powerlines-300-500.shp": "#ff0004",
+    "powerlines-220-300.shp": "#cb00c8",
+    "powerlines-80-170.shp": "#0000ff",
+    "powerlines-10-80.shp": "#00ff88",
+    "powerlines-null.shp": "#e18e00",
+    "power_stations.shp": "#37ff00",
+    "estates.shp": "#000000",
+    "hiking_trails.shp": "#ff2693",
+    "railway.shp": "#474747",
+    "roads.shp": "#999999",
+    "minor_roads.shp": "#b0b0b0",
+    "bike_lane.shp": "#e9f0e4",
+    "ancient_remains_polygons.shp": "#fff761",
+    "building_heritage.shp": "#ffd24d",
+    "cultural_reserve.shp": "#0004ff",
+    "national_parks.shp": "#ffb2d7",
+    "nature_conservations.shp": "#ff3399",
+    "nature_reserves.shp": "#ff40a0",
+    "rich_birdlife.shp": "#ff99ca",
+    "protected_water_areas.shp": "#006eff",
+    "rivers.shp": "#006eff",
+    "ditches.shp": "#006eff",
+    "military_areas.shp": "#00e8bd",
+    "arable_land.shp": "#b97b3e",
+    "buildings.shp": "#999999",
+    "residential_buildings.shp": "#b2b2b2",
+}
+
+
+MAP_SPECIALS = {
+    "powerlines-300-500.shp": "wide_line",
+    "powerlines-220-300.shp": "wide_line",
+    "powerlines-80-170.shp": "wide_line",
+    "powerlines-10-80.shp": "wide_line",
+    "powerlines-null.shp": "wide_line",
+
+    "estates.shp": "dotted",
+
+    # Finnish transport datasets are polygons rather than lines.
+    "hiking_trails.shp": "transparent_15",
+    "railway.shp": "transparent_15",
+    "roads.shp": "transparent_15",
+    "minor_roads.shp": "transparent_15",
+    "bike_lane.shp": "transparent_15",
+
+    "ancient_remains_polygons.shp": "transparent_15",
+    "building_heritage.shp": "transparent_15",
+    "cultural_reserve.shp": "backward_hatch",
+    "national_parks.shp": "transparent_15",
+    "nature_conservations.shp": "transparent_15",
+    "nature_reserves.shp": "transparent_15",
+    "rich_birdlife.shp": "transparent_15",
+    "protected_water_areas.shp": "backward_hatch",
+    "rivers.shp": "transparent_15",
+    "ditches.shp": "wide_line",
+    "military_areas.shp": "transparent_15",
+    "arable_land.shp": "transparent_15",
+    "buildings.shp": "transparent_15",
+    "residential_buildings.shp": "transparent_15",
+}
+
+
+HIDDEN_MAP_LAYERS = {
+    "roads.shp",
+    "minor_roads.shp",
+}
+
+
+def get_map_style(layer_definition):
+    """
+    Return Finnish display settings for a country layer.
+    """
+
+    source_name = os.path.basename(
+        layer_definition["source"]
+    )
+
+    return {
+        "color": MAP_COLORS.get(
+            source_name,
+            "#d27800",
+        ),
+        "visible": (
+            source_name
+            not in HIDDEN_MAP_LAYERS
+        ),
+        "special": MAP_SPECIALS.get(
+            source_name,
+            "none",
+        ),
+    }
+
+
+# Finnish power stations are already stored as points.
+CENTROID_OUTPUTS = {}
+
+
+for definition in LAYERS:
+    definition["centroid_output"] = (
+        CENTROID_OUTPUTS.get(
+            definition["source"]
+        )
+    )
+
+
+SITE_SUMMARY = {
+    "tariff_zone_field": None,
+    "tariff_zone_prefix": "FI",
+}
+
+
+# Finland-specific equivalents have not yet been configured.
+# These analyses must therefore report unavailable and continue.
+STRANG_SETTINGS = None
+METEOROLOGY_SETTINGS = {}
+POLITICAL_SETTINGS = None
+BOS_SETTINGS = None
+REDLISTED_SPECIES_SETTINGS = None
+SOIL_DEPTH_SETTINGS = None
+
+
+GRID_PROXIMITY_SETTINGS = {
+    "crossing_distance_m": 70.0,
+
+    "layers": [
+        {
+            "name": "300–500 kV voimajohto",
+            "type": "power_line",
+        },
+        {
+            "name": "220–300 kV voimajohto",
+            "type": "power_line",
+        },
+        {
+            "name": "80–170 kV voimajohto",
+            "type": "power_line",
+        },
+        {
+            "name": "10–80 kV voimajohto",
+            "type": "power_line",
+        },
+        {
+            "name": "Tuntematon voimajohto",
+            "type": "power_line",
+        },
+        {
+            "name": "Sähköasema",
+            "type": "transformer_station",
+        },
+    ],
+}

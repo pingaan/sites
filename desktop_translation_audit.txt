@@ -1,0 +1,939 @@
+﻿
+  desktop_gui.py:862:
+> desktop_gui.py:863:        self.setWindowTitle(
+  desktop_gui.py:864:            self.text(
+  desktop_gui.py:865:                "application_title"
+  desktop_gui.py:866:            )
+  desktop_gui.py:867:        )
+  desktop_gui.py:954:
+> desktop_gui.py:955:        self.central_tabs.addTab(
+  desktop_gui.py:956:            self.map_canvas,
+  desktop_gui.py:957:            self.text(
+  desktop_gui.py:958:                "map"
+  desktop_gui.py:959:            ),
+  desktop_gui.py:961:
+> desktop_gui.py:962:        self.central_tabs.addTab(
+  desktop_gui.py:963:            self.project_report_view,
+  desktop_gui.py:964:            self.text(
+  desktop_gui.py:965:                "info"
+  desktop_gui.py:966:            ),
+  desktop_gui.py:1021:    def create_layer_panel(self):
+> desktop_gui.py:1022:        self.layer_dock = QDockWidget(
+  desktop_gui.py:1023:            self.text(
+  desktop_gui.py:1024:                "layers"
+  desktop_gui.py:1025:            ),
+  desktop_gui.py:1026:            self,
+  desktop_gui.py:1070:    def create_projects_panel(self):
+> desktop_gui.py:1071:        self.projects_dock = QDockWidget(
+  desktop_gui.py:1072:            self.text(
+  desktop_gui.py:1073:                "projects"
+  desktop_gui.py:1074:            ),
+  desktop_gui.py:1075:            self,
+  desktop_gui.py:1101:
+> desktop_gui.py:1102:        self.open_local_project_action = QAction(
+  desktop_gui.py:1103:            self.text(
+  desktop_gui.py:1104:                "open"
+  desktop_gui.py:1105:            ),
+  desktop_gui.py:1106:            self.projects_tree,
+  desktop_gui.py:1116:
+> desktop_gui.py:1117:        self.open_project_location_action = QAction(
+  desktop_gui.py:1118:            self.text(
+  desktop_gui.py:1119:                "open_location"
+  desktop_gui.py:1120:            ),
+  desktop_gui.py:1121:            self.projects_tree,
+  desktop_gui.py:1132:        self.projects_tree.addAction(
+> desktop_gui.py:1133:            QAction(
+  desktop_gui.py:1134:                self.projects_tree
+  desktop_gui.py:1135:            )
+  desktop_gui.py:1136:        )
+  desktop_gui.py:1137:
+  desktop_gui.py:1143:
+> desktop_gui.py:1144:        self.rename_project_action = QAction(
+  desktop_gui.py:1145:            self.text(
+  desktop_gui.py:1146:                "rename_project_or_folder"
+  desktop_gui.py:1147:            ),
+  desktop_gui.py:1148:            self.projects_tree,
+  desktop_gui.py:1162:
+> desktop_gui.py:1163:        self.delete_projects_action = QAction(
+  desktop_gui.py:1164:            self.text(
+  desktop_gui.py:1165:                "delete_local_projects"
+  desktop_gui.py:1166:            ),
+  desktop_gui.py:1167:            self.projects_tree,
+  desktop_gui.py:1364:
+> desktop_gui.py:1365:        answer = QMessageBox.question(
+  desktop_gui.py:1366:            self,
+  desktop_gui.py:1367:            self.text(
+  desktop_gui.py:1368:                "restart_required"
+  desktop_gui.py:1369:            ),
+  desktop_gui.py:1372:            ),
+> desktop_gui.py:1373:            QMessageBox.Yes
+> desktop_gui.py:1374:            | QMessageBox.No,
+> desktop_gui.py:1375:            QMessageBox.Yes,
+  desktop_gui.py:1376:        )
+  desktop_gui.py:1377:
+> desktop_gui.py:1378:        if answer != QMessageBox.Yes:
+  desktop_gui.py:1379:            return
+  desktop_gui.py:1380:
+  desktop_gui.py:1381:        removed_count = 0
+  desktop_gui.py:1382:        removal_errors = []
+  desktop_gui.py:1428:
+> desktop_gui.py:1429:            QMessageBox.warning(
+  desktop_gui.py:1430:                self,
+  desktop_gui.py:1431:                "Project cleanup incomplete",
+  desktop_gui.py:1432:                (
+  desktop_gui.py:1433:                    f"Removed {removed_count} old "
+  desktop_gui.py:1441:
+> desktop_gui.py:1442:        QMessageBox.information(
+  desktop_gui.py:1443:            self,
+  desktop_gui.py:1444:            "Project cleanup completed",
+  desktop_gui.py:1445:            (
+  desktop_gui.py:1446:                f"Removed {removed_count} old local "
+  desktop_gui.py:1520:
+> desktop_gui.py:1521:                run_item.setToolTip(
+  desktop_gui.py:1522:                    0,
+  desktop_gui.py:1523:                    str(project_path),
+  desktop_gui.py:1524:                )
+  desktop_gui.py:1525:
+  desktop_gui.py:1565:        if len(selected_items) != 1:
+> desktop_gui.py:1566:            QMessageBox.information(
+  desktop_gui.py:1567:                self,
+  desktop_gui.py:1568:                "Open project",
+  desktop_gui.py:1569:                "Select one project or project folder.",
+  desktop_gui.py:1570:            )
+  desktop_gui.py:1594:        if not project_path:
+> desktop_gui.py:1595:            QMessageBox.information(
+  desktop_gui.py:1596:                self,
+  desktop_gui.py:1597:                "Open project",
+  desktop_gui.py:1598:                (
+  desktop_gui.py:1599:                    "The selected folder does not contain "
+  desktop_gui.py:1606:        if not Path(project_path).is_file():
+> desktop_gui.py:1607:            QMessageBox.warning(
+  desktop_gui.py:1608:                self,
+  desktop_gui.py:1609:                "Project missing",
+  desktop_gui.py:1610:                (
+  desktop_gui.py:1611:                    "The selected QGIS project no longer "
+  desktop_gui.py:1635:        if len(selected_items) != 1:
+> desktop_gui.py:1636:            QMessageBox.information(
+  desktop_gui.py:1637:                self,
+  desktop_gui.py:1638:                "Open location",
+  desktop_gui.py:1639:                "Select one project or project folder.",
+  desktop_gui.py:1640:            )
+  desktop_gui.py:1651:        if not directory_path:
+> desktop_gui.py:1652:            QMessageBox.information(
+  desktop_gui.py:1653:                self,
+  desktop_gui.py:1654:                "Open location",
+  desktop_gui.py:1655:                (
+  desktop_gui.py:1656:                    "No local folder is associated with "
+  desktop_gui.py:1667:        if not directory.is_dir():
+> desktop_gui.py:1668:            QMessageBox.warning(
+  desktop_gui.py:1669:                self,
+  desktop_gui.py:1670:                "Folder missing",
+  desktop_gui.py:1671:                (
+  desktop_gui.py:1672:                    "The selected folder no longer "
+  desktop_gui.py:1688:        if not opened:
+> desktop_gui.py:1689:            QMessageBox.warning(
+  desktop_gui.py:1690:                self,
+  desktop_gui.py:1691:                "Open location",
+  desktop_gui.py:1692:                (
+  desktop_gui.py:1693:                    "The operating system could not open "
+  desktop_gui.py:1725:        if len(selected_items) != 1:
+> desktop_gui.py:1726:            QMessageBox.information(
+  desktop_gui.py:1727:                self,
+  desktop_gui.py:1728:                "Select one item",
+  desktop_gui.py:1729:                (
+  desktop_gui.py:1730:                    "Select exactly one project or folder "
+  desktop_gui.py:1758:        ):
+> desktop_gui.py:1759:            QMessageBox.critical(
+  desktop_gui.py:1760:                self,
+  desktop_gui.py:1761:                "Rename prevented",
+  desktop_gui.py:1762:                (
+  desktop_gui.py:1763:                    "Sovra refused to rename a path outside "
+  desktop_gui.py:1781:        if not new_name:
+> desktop_gui.py:1782:            QMessageBox.warning(
+  desktop_gui.py:1783:                self,
+  desktop_gui.py:1784:                "Invalid name",
+  desktop_gui.py:1785:                "The name cannot be empty.",
+  desktop_gui.py:1786:            )
+  desktop_gui.py:1815:        ):
+> desktop_gui.py:1816:            QMessageBox.warning(
+  desktop_gui.py:1817:                self,
+  desktop_gui.py:1818:                "Invalid name",
+  desktop_gui.py:1819:                (
+  desktop_gui.py:1820:                    "The name contains characters or a "
+  desktop_gui.py:1835:        if target_path.exists():
+> desktop_gui.py:1836:            QMessageBox.warning(
+  desktop_gui.py:1837:                self,
+  desktop_gui.py:1838:                "Name already exists",
+  desktop_gui.py:1839:                (
+  desktop_gui.py:1840:                    "Another project or folder already "
+  desktop_gui.py:1867:        except OSError as error:
+> desktop_gui.py:1868:            QMessageBox.critical(
+  desktop_gui.py:1869:                self,
+  desktop_gui.py:1870:                "Rename failed",
+  desktop_gui.py:1871:                (
+  desktop_gui.py:1872:                    "The project folder could not be "
+  desktop_gui.py:1891:
+> desktop_gui.py:1892:        self.status_message.setText(
+  desktop_gui.py:1893:            f"Renamed to: {new_name}"
+  desktop_gui.py:1894:        )
+  desktop_gui.py:1895:
+  desktop_gui.py:1896:    def delete_selected_projects(self):
+  desktop_gui.py:1935:        if not filtered_paths:
+> desktop_gui.py:1936:            QMessageBox.information(
+  desktop_gui.py:1937:                self,
+  desktop_gui.py:1938:                "No projects selected",
+  desktop_gui.py:1939:                (
+  desktop_gui.py:1940:                    "Select one or more projects or "
+  desktop_gui.py:1957:            ):
+> desktop_gui.py:1958:                QMessageBox.critical(
+  desktop_gui.py:1959:                    self,
+  desktop_gui.py:1960:                    "Unsafe deletion prevented",
+  desktop_gui.py:1961:                    (
+  desktop_gui.py:1962:                        "Sites refused to delete a path "
+  desktop_gui.py:1977:
+> desktop_gui.py:1978:        answer = QMessageBox.warning(
+  desktop_gui.py:1979:            self,
+  desktop_gui.py:1980:            "Delete local projects?",
+  desktop_gui.py:1981:            (
+  desktop_gui.py:1982:                "The following local project data will "
+  desktop_gui.py:1989:            ),
+> desktop_gui.py:1990:            QMessageBox.Yes | QMessageBox.No,
+> desktop_gui.py:1991:            QMessageBox.No,
+  desktop_gui.py:1992:        )
+  desktop_gui.py:1993:
+> desktop_gui.py:1994:        if answer != QMessageBox.Yes:
+  desktop_gui.py:1995:            return
+  desktop_gui.py:1996:
+  desktop_gui.py:1997:        deletion_errors = []
+  desktop_gui.py:1998:
+  desktop_gui.py:2011:        if deletion_errors:
+> desktop_gui.py:2012:            QMessageBox.critical(
+  desktop_gui.py:2013:                self,
+  desktop_gui.py:2014:                "Deletion incomplete",
+  desktop_gui.py:2015:                (
+  desktop_gui.py:2016:                    "Some selected projects could not "
+  desktop_gui.py:2022:
+> desktop_gui.py:2023:        self.status_message.setText(
+  desktop_gui.py:2024:            "Selected local projects deleted"
+  desktop_gui.py:2025:        )
+  desktop_gui.py:2026:
+  desktop_gui.py:2027:    # ---------------------------------------------------------
+  desktop_gui.py:2032:
+> desktop_gui.py:2033:        self.information_dock = QDockWidget(
+  desktop_gui.py:2034:            self.text(
+  desktop_gui.py:2035:                "information"
+  desktop_gui.py:2036:            ),
+  desktop_gui.py:2037:            self,
+  desktop_gui.py:2077:
+> desktop_gui.py:2078:        self.information_tabs.addTab(
+  desktop_gui.py:2079:            self.feature_table,
+  desktop_gui.py:2080:            self.text(
+  desktop_gui.py:2081:                "feature_information"
+  desktop_gui.py:2082:            ),
+  desktop_gui.py:2084:
+> desktop_gui.py:2085:        self.information_tabs.addTab(
+  desktop_gui.py:2086:            self.layer_table,
+  desktop_gui.py:2087:            self.text(
+  desktop_gui.py:2088:                "layer_information"
+  desktop_gui.py:2089:            ),
+  desktop_gui.py:2105:    def create_overview_panel(self):
+> desktop_gui.py:2106:        self.overview_dock = QDockWidget(
+  desktop_gui.py:2107:            self.text(
+  desktop_gui.py:2108:                "country_overview"
+  desktop_gui.py:2109:            ),
+  desktop_gui.py:2110:            self,
+  desktop_gui.py:2131:
+> desktop_gui.py:2132:        self.options_action = QAction(
+  desktop_gui.py:2133:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2134:                "/mActionOptions.svg"
+  desktop_gui.py:2135:            ),
+  desktop_gui.py:2136:            self.text(
+  desktop_gui.py:2141:
+> desktop_gui.py:2142:        self.options_action.setToolTip(
+  desktop_gui.py:2143:            self.text(
+  desktop_gui.py:2144:                "configure_sovra"
+  desktop_gui.py:2145:            )
+  desktop_gui.py:2146:        )
+  desktop_gui.py:2151:
+> desktop_gui.py:2152:        self.open_project_action = QAction(
+  desktop_gui.py:2153:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2154:                "/mActionFileOpen.svg"
+  desktop_gui.py:2155:            ),
+  desktop_gui.py:2156:            self.text(
+  desktop_gui.py:2165:
+> desktop_gui.py:2166:        self.save_project_action = QAction(
+  desktop_gui.py:2167:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2168:                "/mActionFileSave.svg"
+  desktop_gui.py:2169:            ),
+  desktop_gui.py:2170:            self.text(
+  desktop_gui.py:2179:
+> desktop_gui.py:2180:        self.print_project_action = QAction(
+  desktop_gui.py:2181:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2182:                "/mActionFilePrint.svg"
+  desktop_gui.py:2183:            ),
+  desktop_gui.py:2184:            self.text(
+  desktop_gui.py:2193:
+> desktop_gui.py:2194:        self.print_project_action.setToolTip(
+  desktop_gui.py:2195:            self.text(
+  desktop_gui.py:2196:                "print_project_tooltip"
+  desktop_gui.py:2197:            )
+  desktop_gui.py:2198:        )
+  desktop_gui.py:2212:
+> desktop_gui.py:2213:        self.export_solar_action = QAction(
+  desktop_gui.py:2214:            export_icon,
+  desktop_gui.py:2215:            self.text(
+  desktop_gui.py:2216:                "export_solar_area"
+  desktop_gui.py:2217:            ),
+  desktop_gui.py:2220:
+> desktop_gui.py:2221:        self.export_solar_action.setToolTip(
+  desktop_gui.py:2222:            self.text(
+  desktop_gui.py:2223:                "export_solar_area_tooltip"
+  desktop_gui.py:2224:            )
+  desktop_gui.py:2225:        )
+  desktop_gui.py:2232:
+> desktop_gui.py:2233:        self.export_wind_action = QAction(
+  desktop_gui.py:2234:            export_icon,
+  desktop_gui.py:2235:            self.text(
+  desktop_gui.py:2236:                "export_wind_area"
+  desktop_gui.py:2237:            ),
+  desktop_gui.py:2240:
+> desktop_gui.py:2241:        self.export_wind_action.setToolTip(
+  desktop_gui.py:2242:            self.text(
+  desktop_gui.py:2243:                "export_wind_area_tooltip"
+  desktop_gui.py:2244:            )
+  desktop_gui.py:2245:        )
+  desktop_gui.py:2252:
+> desktop_gui.py:2253:        self.exit_action = QAction(
+  desktop_gui.py:2254:            self.text(
+  desktop_gui.py:2255:                "exit"
+  desktop_gui.py:2256:            ),
+  desktop_gui.py:2257:            self,
+  desktop_gui.py:2259:
+> desktop_gui.py:2260:        self.full_extent_action = QAction(
+  desktop_gui.py:2261:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2262:                "/mActionZoomFullExtent.svg"
+  desktop_gui.py:2263:            ),
+  desktop_gui.py:2264:            self.text(
+  desktop_gui.py:2269:
+> desktop_gui.py:2270:        self.open_project_action.setToolTip(
+  desktop_gui.py:2271:            self.text(
+  desktop_gui.py:2272:                "open_qgis_project_tooltip"
+  desktop_gui.py:2273:            )
+  desktop_gui.py:2274:        )
+  desktop_gui.py:2275:
+> desktop_gui.py:2276:        self.save_project_action.setToolTip(
+  desktop_gui.py:2277:            self.text(
+  desktop_gui.py:2278:                "save_project_tooltip"
+  desktop_gui.py:2279:            )
+  desktop_gui.py:2280:        )
+  desktop_gui.py:2281:
+> desktop_gui.py:2282:        self.full_extent_action.setToolTip(
+  desktop_gui.py:2283:            self.text(
+  desktop_gui.py:2284:                "full_extent_tooltip"
+  desktop_gui.py:2285:            )
+  desktop_gui.py:2286:        )
+  desktop_gui.py:2298:        for basemap_name in BASEMAPS:
+> desktop_gui.py:2299:            action = QAction(
+  desktop_gui.py:2300:                basemap_name,
+  desktop_gui.py:2301:                self,
+  desktop_gui.py:2302:            )
+  desktop_gui.py:2303:
+  desktop_gui.py:2324:
+> desktop_gui.py:2325:        self.about_action = QAction(
+  desktop_gui.py:2326:            self.text(
+  desktop_gui.py:2327:                "about_sovra"
+  desktop_gui.py:2328:            ),
+  desktop_gui.py:2329:            self,
+  desktop_gui.py:2343:
+> desktop_gui.py:2344:        self.pan_action = QAction(
+  desktop_gui.py:2345:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2346:                "/mActionPan.svg"
+  desktop_gui.py:2347:            ),
+  desktop_gui.py:2348:            self.text(
+  desktop_gui.py:2357:
+> desktop_gui.py:2358:        self.pan_action.setToolTip(
+  desktop_gui.py:2359:            self.text(
+  desktop_gui.py:2360:                "pan_map_tooltip"
+  desktop_gui.py:2361:            )
+  desktop_gui.py:2362:        )
+  desktop_gui.py:2363:
+> desktop_gui.py:2364:        self.identify_feature_action = QAction(
+  desktop_gui.py:2365:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2366:                "/mActionIdentify.svg"
+  desktop_gui.py:2367:            ),
+  desktop_gui.py:2368:            self.text(
+  desktop_gui.py:2377:
+> desktop_gui.py:2378:        self.identify_feature_action.setToolTip(
+  desktop_gui.py:2379:            self.text(
+  desktop_gui.py:2380:                "identify_feature_tooltip"
+  desktop_gui.py:2381:            )
+  desktop_gui.py:2382:        )
+  desktop_gui.py:2387:
+> desktop_gui.py:2388:        self.measure_distance_action = QAction(
+  desktop_gui.py:2389:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2390:                "/mActionMeasure.svg"
+  desktop_gui.py:2391:            ),
+  desktop_gui.py:2392:            self.text(
+  desktop_gui.py:2401:
+> desktop_gui.py:2402:        self.measure_distance_action.setToolTip(
+  desktop_gui.py:2403:            self.text(
+  desktop_gui.py:2404:                "measure_distance_tooltip"
+  desktop_gui.py:2405:            )
+  desktop_gui.py:2406:        )
+  desktop_gui.py:2411:
+> desktop_gui.py:2412:        self.measure_area_action = QAction(
+  desktop_gui.py:2413:            QgsApplication.getThemeIcon(
+  desktop_gui.py:2414:                "/mActionMeasureArea.svg"
+  desktop_gui.py:2415:            ),
+  desktop_gui.py:2416:            self.text(
+  desktop_gui.py:2425:
+> desktop_gui.py:2426:        self.measure_area_action.setToolTip(
+  desktop_gui.py:2427:            self.text(
+  desktop_gui.py:2428:                "measure_area_tooltip"
+  desktop_gui.py:2429:            )
+  desktop_gui.py:2430:        )
+  desktop_gui.py:2495:        ):
+> desktop_gui.py:2496:            action = QAction(
+  desktop_gui.py:2497:                language_name,
+  desktop_gui.py:2498:                self,
+  desktop_gui.py:2499:            )
+  desktop_gui.py:2500:
+  desktop_gui.py:2566:
+> desktop_gui.py:2567:        self.status_message.setText(
+  desktop_gui.py:2568:            "Application language selected: "
+  desktop_gui.py:2569:            f"{language_names[language_code]}"
+  desktop_gui.py:2570:        )
+  desktop_gui.py:2571:
+  desktop_gui.py:2601:
+> desktop_gui.py:2602:        answer = QMessageBox.question(
+  desktop_gui.py:2603:            self,
+  desktop_gui.py:2604:            ui_text(
+  desktop_gui.py:2605:                selected_language,
+  desktop_gui.py:2606:                "restart_required",
+  desktop_gui.py:2611:            ),
+> desktop_gui.py:2612:            QMessageBox.Yes
+> desktop_gui.py:2613:            | QMessageBox.No,
+> desktop_gui.py:2614:            QMessageBox.Yes,
+  desktop_gui.py:2615:        )
+  desktop_gui.py:2616:
+> desktop_gui.py:2617:        if answer == QMessageBox.Yes:
+  desktop_gui.py:2618:            self.close()
+  desktop_gui.py:2619:
+  desktop_gui.py:2620:    def create_menus(self):
+> desktop_gui.py:2621:        file_menu = self.menuBar().addMenu(
+  desktop_gui.py:2622:            self.text(
+  desktop_gui.py:2623:                "menu_file"
+  desktop_gui.py:2624:            )
+  desktop_gui.py:2625:        )
+  desktop_gui.py:2640:
+> desktop_gui.py:2641:        self.menuBar().addMenu(
+  desktop_gui.py:2642:            self.text(
+  desktop_gui.py:2643:                "menu_edit"
+  desktop_gui.py:2644:            )
+  desktop_gui.py:2645:        )
+  desktop_gui.py:2646:
+> desktop_gui.py:2647:        view_menu = self.menuBar().addMenu(
+  desktop_gui.py:2648:            self.text(
+  desktop_gui.py:2649:                "menu_view"
+  desktop_gui.py:2650:            )
+  desktop_gui.py:2651:        )
+  desktop_gui.py:2666:
+> desktop_gui.py:2667:        self.basemap_menu = view_menu.addMenu(
+  desktop_gui.py:2668:            self.text(
+  desktop_gui.py:2669:                "basemap"
+  desktop_gui.py:2670:            )
+  desktop_gui.py:2671:        )
+  desktop_gui.py:2677:
+> desktop_gui.py:2678:        settings_menu = self.menuBar().addMenu(
+  desktop_gui.py:2679:            self.text(
+  desktop_gui.py:2680:                "menu_settings"
+  desktop_gui.py:2681:            )
+  desktop_gui.py:2682:        )
+  desktop_gui.py:2687:
+> desktop_gui.py:2688:        analysis_menu = self.menuBar().addMenu(
+  desktop_gui.py:2689:            self.text(
+  desktop_gui.py:2690:                "menu_analysis"
+  desktop_gui.py:2691:            )
+  desktop_gui.py:2692:        )
+  desktop_gui.py:2693:
+> desktop_gui.py:2694:        self.start_analysis_action = QAction(
+  desktop_gui.py:2695:            self.text(
+  desktop_gui.py:2696:                "start_analysis"
+  desktop_gui.py:2697:            ),
+  desktop_gui.py:2698:            self,
+  desktop_gui.py:2708:
+> desktop_gui.py:2709:        help_menu = self.menuBar().addMenu(
+  desktop_gui.py:2710:            self.text(
+  desktop_gui.py:2711:                "menu_help"
+  desktop_gui.py:2712:            )
+  desktop_gui.py:2713:        )
+  desktop_gui.py:2814:        if layer is None or not layer.isValid():
+> desktop_gui.py:2815:            QMessageBox.warning(
+  desktop_gui.py:2816:                self,
+  desktop_gui.py:2817:                self.text(
+  desktop_gui.py:2818:                    "analysis_area_unavailable"
+  desktop_gui.py:2819:                ),
+  desktop_gui.py:2842:
+> desktop_gui.py:2843:        output_path, _ = QFileDialog.getSaveFileName(
+  desktop_gui.py:2844:            self,
+  desktop_gui.py:2845:            self.text(
+  desktop_gui.py:2846:                "export_area_dialog",
+  desktop_gui.py:2847:                area=definition["title"],
+  desktop_gui.py:2899:        ):
+> desktop_gui.py:2900:            QMessageBox.critical(
+  desktop_gui.py:2901:                self,
+  desktop_gui.py:2902:                self.text(
+  desktop_gui.py:2903:                    "export_failed"
+  desktop_gui.py:2904:                ),
+  desktop_gui.py:2912:
+> desktop_gui.py:2913:        QMessageBox.information(
+  desktop_gui.py:2914:            self,
+  desktop_gui.py:2915:            self.text(
+  desktop_gui.py:2916:                "export_completed"
+  desktop_gui.py:2917:            ),
+  desktop_gui.py:2987:
+> desktop_gui.py:2988:        self.export_area_button.setText(
+  desktop_gui.py:2989:            self.text(
+  desktop_gui.py:2990:                "export_area"
+  desktop_gui.py:2991:            )
+  desktop_gui.py:2992:        )
+  desktop_gui.py:2993:
+> desktop_gui.py:2994:        self.export_area_button.setToolTip(
+  desktop_gui.py:2995:            self.text(
+  desktop_gui.py:2996:                "export_area_tooltip"
+  desktop_gui.py:2997:            )
+  desktop_gui.py:2998:        )
+  desktop_gui.py:3040:
+> desktop_gui.py:3041:        self.basemap_button.setToolTip(
+  desktop_gui.py:3042:            self.text(
+  desktop_gui.py:3043:                "select_background_map"
+  desktop_gui.py:3044:            )
+  desktop_gui.py:3045:        )
+  desktop_gui.py:3046:
+> desktop_gui.py:3047:        self.basemap_button.setToolTip(
+  desktop_gui.py:3048:            "Select background map"
+  desktop_gui.py:3049:        )
+  desktop_gui.py:3050:
+  desktop_gui.py:3051:        self.basemap_button.setToolButtonStyle(
+  desktop_gui.py:3077:        analysis_toolbar.addWidget(
+> desktop_gui.py:3078:            QLabel(
+  desktop_gui.py:3079:                self.text(
+  desktop_gui.py:3080:                    "country_label"
+  desktop_gui.py:3081:                )
+  desktop_gui.py:3082:            )
+  desktop_gui.py:3129:
+> desktop_gui.py:3130:        self.source_input.setPlaceholderText(
+  desktop_gui.py:3131:            "KÄVLINGE ÅLSTORP 19:63"
+  desktop_gui.py:3132:        )
+  desktop_gui.py:3133:
+  desktop_gui.py:3134:        analysis_toolbar.addWidget(
+  desktop_gui.py:3137:
+> desktop_gui.py:3138:        self.browse_button = QPushButton(
+  desktop_gui.py:3139:            "Browse…"
+  desktop_gui.py:3140:        )
+  desktop_gui.py:3141:
+  desktop_gui.py:3142:        self.browse_button.setEnabled(
+  desktop_gui.py:3151:
+> desktop_gui.py:3152:        self.run_button = QPushButton(
+  desktop_gui.py:3153:            self.text(
+  desktop_gui.py:3154:                "start_analysis"
+  desktop_gui.py:3155:            )
+  desktop_gui.py:3156:        )
+  desktop_gui.py:3166:    def create_status_bar(self):
+> desktop_gui.py:3167:        self.status_message = QLabel(
+  desktop_gui.py:3168:            "Ready"
+  desktop_gui.py:3169:        )
+  desktop_gui.py:3170:
+> desktop_gui.py:3171:        self.coordinate_label = QLabel(
+  desktop_gui.py:3172:            "X: —  Y: —"
+  desktop_gui.py:3173:        )
+  desktop_gui.py:3174:
+> desktop_gui.py:3175:        self.scale_label = QLabel(
+  desktop_gui.py:3176:            "Scale: —"
+  desktop_gui.py:3177:        )
+  desktop_gui.py:3178:
+  desktop_gui.py:3179:        self.statusBar().addWidget(
+  desktop_gui.py:3404:        ):
+> desktop_gui.py:3405:            QMessageBox.information(
+  desktop_gui.py:3406:                self,
+  desktop_gui.py:3407:                "Select a vector layer",
+  desktop_gui.py:3408:                (
+  desktop_gui.py:3409:                    "Select a vector layer in the Layers "
+  desktop_gui.py:3566:        if not candidate.isValid():
+> desktop_gui.py:3567:            QMessageBox.warning(
+  desktop_gui.py:3568:                self,
+  desktop_gui.py:3569:                "Basemap unavailable",
+  desktop_gui.py:3570:                (
+  desktop_gui.py:3571:                    "The selected background map could "
+  desktop_gui.py:3589:        if hasattr(self, "basemap_button"):
+> desktop_gui.py:3590:            self.basemap_button.setText(
+  desktop_gui.py:3591:                basemap_name
+  desktop_gui.py:3592:            )
+  desktop_gui.py:3593:
+  desktop_gui.py:3594:        self.refresh_map_layers()
+  desktop_gui.py:3595:
+> desktop_gui.py:3596:        self.status_message.setText(
+  desktop_gui.py:3597:            f"Basemap: {basemap_name}"
+  desktop_gui.py:3598:        )
+  desktop_gui.py:3599:
+  desktop_gui.py:3600:    def visible_project_layers(self):
+  desktop_gui.py:3708:        if country_code == "FI":
+> desktop_gui.py:3709:            self.source_input.setPlaceholderText(
+  desktop_gui.py:3710:                "434-415-1-226"
+  desktop_gui.py:3711:            )
+  desktop_gui.py:3712:        else:
+> desktop_gui.py:3713:            self.source_input.setPlaceholderText(
+  desktop_gui.py:3714:                "KÄVLINGE ÅLSTORP 19:63"
+  desktop_gui.py:3715:            )
+  desktop_gui.py:3716:
+  desktop_gui.py:3717:    def update_source_type(self):
+  desktop_gui.py:3741:
+> desktop_gui.py:3742:            self.source_input.setPlaceholderText(
+  desktop_gui.py:3743:                "Select a polygon file…"
+  desktop_gui.py:3744:            )
+  desktop_gui.py:3745:
+  desktop_gui.py:3746:            if self.custom_polygon_path:
+> desktop_gui.py:3747:                self.source_input.setText(
+  desktop_gui.py:3748:                    self.custom_polygon_path
+  desktop_gui.py:3749:                )
+  desktop_gui.py:3750:            else:
+  desktop_gui.py:3751:                self.source_input.clear()
+  desktop_gui.py:3754:            if self.drawn_polygon_path:
+> desktop_gui.py:3755:                self.source_input.setText(
+  desktop_gui.py:3756:                    self.drawn_polygon_path
+  desktop_gui.py:3757:                )
+  desktop_gui.py:3758:            else:
+  desktop_gui.py:3759:                self.source_input.clear()
+  desktop_gui.py:4042:
+> desktop_gui.py:4043:        self.status_message.setText(
+  desktop_gui.py:4044:            "Draw the analysis polygon: "
+  desktop_gui.py:4045:            "left-click to add points, "
+  desktop_gui.py:4046:            "right-click to finish, "
+  desktop_gui.py:4047:            "or press Escape to cancel."
+  desktop_gui.py:4054:
+> desktop_gui.py:4055:        self.status_message.setText(
+  desktop_gui.py:4056:            "Polygon drawing cancelled."
+  desktop_gui.py:4057:        )
+  desktop_gui.py:4058:
+  desktop_gui.py:4059:    def finish_drawn_polygon(self, geometry):
+  desktop_gui.py:4060:        if geometry is None or geometry.isEmpty():
+> desktop_gui.py:4061:            QMessageBox.warning(
+  desktop_gui.py:4062:                self,
+  desktop_gui.py:4063:                "Invalid polygon",
+  desktop_gui.py:4064:                "The drawn polygon contains no geometry.",
+  desktop_gui.py:4065:            )
+  desktop_gui.py:4068:        if not geometry.isGeosValid():
+> desktop_gui.py:4069:            QMessageBox.warning(
+  desktop_gui.py:4070:                self,
+  desktop_gui.py:4071:                "Invalid polygon",
+  desktop_gui.py:4072:                (
+  desktop_gui.py:4073:                    "The drawn polygon is not geometrically "
+  desktop_gui.py:4088:        if not map_crs.isValid():
+> desktop_gui.py:4089:            QMessageBox.warning(
+  desktop_gui.py:4090:                self,
+  desktop_gui.py:4091:                "Invalid map CRS",
+  desktop_gui.py:4092:                (
+  desktop_gui.py:4093:                    "The map does not have a valid "
+  desktop_gui.py:4113:        if not provider.addFeature(feature):
+> desktop_gui.py:4114:            QMessageBox.critical(
+  desktop_gui.py:4115:                self,
+  desktop_gui.py:4116:                "Polygon error",
+  desktop_gui.py:4117:                (
+  desktop_gui.py:4118:                    "The drawn polygon could not be "
+  desktop_gui.py:4183:        ):
+> desktop_gui.py:4184:            QMessageBox.critical(
+  desktop_gui.py:4185:                self,
+  desktop_gui.py:4186:                "Polygon save error",
+  desktop_gui.py:4187:                (
+  desktop_gui.py:4188:                    "The drawn polygon could not be "
+  desktop_gui.py:4206:        if not preview_layer.isValid():
+> desktop_gui.py:4207:            QMessageBox.critical(
+  desktop_gui.py:4208:                self,
+  desktop_gui.py:4209:                "Polygon preview error",
+  desktop_gui.py:4210:                (
+  desktop_gui.py:4211:                    "The saved polygon could not be "
+  desktop_gui.py:4238:
+> desktop_gui.py:4239:        self.source_input.setText(
+  desktop_gui.py:4240:            polygon_uri
+  desktop_gui.py:4241:        )
+  desktop_gui.py:4242:
+> desktop_gui.py:4243:        self.source_input.setToolTip(
+  desktop_gui.py:4244:            polygon_uri
+  desktop_gui.py:4245:        )
+  desktop_gui.py:4246:
+  desktop_gui.py:4247:        self.activate_pan_tool()
+  desktop_gui.py:4270:
+> desktop_gui.py:4271:        self.status_message.setText(
+  desktop_gui.py:4272:            "Drawn analysis polygon is ready."
+  desktop_gui.py:4273:        )
+  desktop_gui.py:4274:
+  desktop_gui.py:4275:    def select_custom_polygon(self):
+  desktop_gui.py:4282:
+> desktop_gui.py:4283:        file_path, _ = QFileDialog.getOpenFileName(
+  desktop_gui.py:4284:            self,
+  desktop_gui.py:4285:            "Select analysis polygon",
+  desktop_gui.py:4286:            os.path.expanduser("~"),
+  desktop_gui.py:4287:            file_filters,
+  desktop_gui.py:4299:        except Exception as error:
+> desktop_gui.py:4300:            QMessageBox.warning(
+  desktop_gui.py:4301:                self,
+  desktop_gui.py:4302:                "Unable to inspect data source",
+  desktop_gui.py:4303:                (
+  desktop_gui.py:4304:                    "QGIS could not inspect the selected "
+  desktop_gui.py:4358:        if not polygon_candidates:
+> desktop_gui.py:4359:            QMessageBox.warning(
+  desktop_gui.py:4360:                self,
+  desktop_gui.py:4361:                "Polygon layer required",
+  desktop_gui.py:4362:                (
+  desktop_gui.py:4363:                    "The selected data source does not "
+  desktop_gui.py:4434:
+> desktop_gui.py:4435:        self.source_input.setText(
+  desktop_gui.py:4436:            polygon_uri
+  desktop_gui.py:4437:        )
+  desktop_gui.py:4438:
+> desktop_gui.py:4439:        self.source_input.setToolTip(
+  desktop_gui.py:4440:            polygon_uri
+  desktop_gui.py:4441:        )
+  desktop_gui.py:4442:
+  desktop_gui.py:4443:        self.refresh_map_layers()
+  desktop_gui.py:4462:
+> desktop_gui.py:4463:        self.status_message.setText(
+  desktop_gui.py:4464:            "Analysis polygon loaded and previewed."
+  desktop_gui.py:4465:        )
+  desktop_gui.py:4466:
+  desktop_gui.py:4467:    def local_project_files(self):
+  desktop_gui.py:4545:            self.source_input.clear()
+> desktop_gui.py:4546:            self.source_input.setToolTip("")
+  desktop_gui.py:4547:
+  desktop_gui.py:4548:        self.activate_pan_tool()
+  desktop_gui.py:4549:        self.refresh_map_layers()
+  desktop_gui.py:4550:
+  desktop_gui.py:4564:        if not source_value:
+> desktop_gui.py:4565:            QMessageBox.warning(
+  desktop_gui.py:4566:                self,
+  desktop_gui.py:4567:                "Missing analysis source",
+  desktop_gui.py:4568:                (
+  desktop_gui.py:4569:                    "Enter an estate identifier or "
+  desktop_gui.py:4585:            if not os.path.isfile(source_file):
+> desktop_gui.py:4586:                QMessageBox.warning(
+  desktop_gui.py:4587:                    self,
+  desktop_gui.py:4588:                    "Polygon not found",
+  desktop_gui.py:4589:                    (
+  desktop_gui.py:4590:                        "The selected polygon source "
+  desktop_gui.py:4630:
+> desktop_gui.py:4631:            self.analysis_window.estate_input.setText(
+  desktop_gui.py:4632:                source_value
+  desktop_gui.py:4633:            )
+  desktop_gui.py:4634:        else:
+  desktop_gui.py:4635:            self.analysis_window.polygon_radio.setChecked(
+  desktop_gui.py:4638:
+> desktop_gui.py:4639:            self.analysis_window.polygon_input.setText(
+  desktop_gui.py:4640:                source_value
+  desktop_gui.py:4641:            )
+  desktop_gui.py:4642:
+  desktop_gui.py:4643:        self.analysis_window.show()
+  desktop_gui.py:4661:
+> desktop_gui.py:4662:        self.status_message.setText(
+  desktop_gui.py:4663:            "Analysis running…"
+  desktop_gui.py:4664:        )
+  desktop_gui.py:4665:
+  desktop_gui.py:4666:    def analysis_process_finished(
+  desktop_gui.py:4677:        if exit_code != 0:
+> desktop_gui.py:4678:            self.status_message.setText(
+  desktop_gui.py:4679:                "Analysis failed"
+  desktop_gui.py:4680:            )
+  desktop_gui.py:4681:
+  desktop_gui.py:4682:            if "No estate was found for" in output:
+  desktop_gui.py:4688:
+> desktop_gui.py:4689:                QMessageBox.warning(
+  desktop_gui.py:4690:                    self,
+  desktop_gui.py:4691:                    "Estate not found",
+  desktop_gui.py:4692:                    (
+  desktop_gui.py:4693:                        "No estate was found matching:\n\n"
+  desktop_gui.py:4700:            else:
+> desktop_gui.py:4701:                QMessageBox.critical(
+  desktop_gui.py:4702:                    self,
+  desktop_gui.py:4703:                    "Analysis failed",
+  desktop_gui.py:4704:                    (
+  desktop_gui.py:4705:                        "The analysis could not be completed.\n\n"
+  desktop_gui.py:4720:        if completed_project is None:
+> desktop_gui.py:4721:            self.status_message.setText(
+  desktop_gui.py:4722:                (
+  desktop_gui.py:4723:                    "Analysis completed, but the new "
+  desktop_gui.py:4724:                    "QGIS project could not be located."
+  desktop_gui.py:4725:                )
+  desktop_gui.py:4740:
+> desktop_gui.py:4741:        self.status_message.setText(
+  desktop_gui.py:4742:            "Analysis completed and project loaded"
+  desktop_gui.py:4743:        )
+  desktop_gui.py:4744:
+  desktop_gui.py:4745:    # ---------------------------------------------------------
+  desktop_gui.py:4783:
+> desktop_gui.py:4784:            self.project_report_view.setToolTip(
+  desktop_gui.py:4785:                str(markdown_path)
+  desktop_gui.py:4786:            )
+  desktop_gui.py:4787:
+  desktop_gui.py:4788:            return
+  desktop_gui.py:4820:
+> desktop_gui.py:4821:            self.project_report_view.setToolTip(
+  desktop_gui.py:4822:                str(legacy_path)
+  desktop_gui.py:4823:            )
+  desktop_gui.py:4824:
+  desktop_gui.py:4825:            return
+  desktop_gui.py:4832:
+> desktop_gui.py:4833:        self.project_report_view.setToolTip(
+  desktop_gui.py:4834:            str(project_directory)
+  desktop_gui.py:4835:        )
+  desktop_gui.py:4836:
+  desktop_gui.py:4837:    def open_project(self):
+> desktop_gui.py:4838:        project_path, _ = QFileDialog.getOpenFileName(
+  desktop_gui.py:4839:            self,
+  desktop_gui.py:4840:            "Open QGIS project",
+  desktop_gui.py:4841:            os.path.expanduser("~"),
+  desktop_gui.py:4842:            "QGIS projects (*.qgz *.qgs)",
+  desktop_gui.py:4856:        if not self.project.read(project_path):
+> desktop_gui.py:4857:            QMessageBox.critical(
+  desktop_gui.py:4858:                self,
+  desktop_gui.py:4859:                "Project error",
+  desktop_gui.py:4860:                (
+  desktop_gui.py:4861:                    "Failed to open the QGIS project:\n"
+  desktop_gui.py:4870:        if not project_crs.isValid():
+> desktop_gui.py:4871:            QMessageBox.critical(
+  desktop_gui.py:4872:                self,
+  desktop_gui.py:4873:                "Project CRS error",
+  desktop_gui.py:4874:                (
+  desktop_gui.py:4875:                    "The loaded project does not have "
+  desktop_gui.py:4896:
+> desktop_gui.py:4897:        self.status_message.setText(
+  desktop_gui.py:4898:            f"Project loaded: {os.path.basename(project_path)}"
+  desktop_gui.py:4899:        )
+  desktop_gui.py:4900:
+  desktop_gui.py:4901:    def print_project(self):
+  desktop_gui.py:4906:        if not self.project.fileName():
+> desktop_gui.py:4907:            QMessageBox.information(
+  desktop_gui.py:4908:                self,
+  desktop_gui.py:4909:                self.text("no_project_loaded"),
+  desktop_gui.py:4910:                self.text(
+  desktop_gui.py:4911:                    "load_project_before_printing"
+  desktop_gui.py:4922:        if not layouts:
+> desktop_gui.py:4923:            QMessageBox.information(
+  desktop_gui.py:4924:                self,
+  desktop_gui.py:4925:                "No print layout",
+  desktop_gui.py:4926:                (
+  desktop_gui.py:4927:                    "The current project does not contain "
+  desktop_gui.py:4981:
+> desktop_gui.py:4982:        print_dialog.setWindowTitle(
+  desktop_gui.py:4983:            "Print Sovra project"
+  desktop_gui.py:4984:        )
+  desktop_gui.py:4985:
+  desktop_gui.py:4986:        if not print_dialog.exec_():
+  desktop_gui.py:4991:        if not painter.begin(printer):
+> desktop_gui.py:4992:            QMessageBox.critical(
+  desktop_gui.py:4993:                self,
+  desktop_gui.py:4994:                "Printing failed",
+  desktop_gui.py:4995:                "The selected printer could not be opened.",
+  desktop_gui.py:4996:            )
+  desktop_gui.py:5025:        except Exception as error:
+> desktop_gui.py:5026:            QMessageBox.critical(
+  desktop_gui.py:5027:                self,
+  desktop_gui.py:5028:                "Printing failed",
+  desktop_gui.py:5029:                str(error),
+  desktop_gui.py:5030:            )
+  desktop_gui.py:5040:        if not project_path:
+> desktop_gui.py:5041:            project_path, _ = QFileDialog.getSaveFileName(
+  desktop_gui.py:5042:                self,
+  desktop_gui.py:5043:                "Save QGIS project",
+  desktop_gui.py:5044:                os.path.expanduser("~"),
+  desktop_gui.py:5045:                "QGIS project (*.qgz)",
+  desktop_gui.py:5058:        ):
+> desktop_gui.py:5059:            QMessageBox.critical(
+  desktop_gui.py:5060:                self,
+  desktop_gui.py:5061:                "Save error",
+  desktop_gui.py:5062:                "The project could not be saved.",
+  desktop_gui.py:5063:            )
+  desktop_gui.py:5066:
+> desktop_gui.py:5067:        self.status_message.setText(
+  desktop_gui.py:5068:            "Project saved"
+  desktop_gui.py:5069:        )
+  desktop_gui.py:5070:
+  desktop_gui.py:5071:    # ---------------------------------------------------------
+  desktop_gui.py:5206:        if admin_field_index == -1:
+> desktop_gui.py:5207:            self.status_message.setText(
+  desktop_gui.py:5208:                "Country overview unavailable: "
+  desktop_gui.py:5209:                "the ADMIN field was not found."
+  desktop_gui.py:5210:            )
+  desktop_gui.py:5211:
+  desktop_gui.py:5226:
+> desktop_gui.py:5227:        self.status_message.setText(
+  desktop_gui.py:5228:            "Country overview unavailable: "
+  desktop_gui.py:5229:            f"{country_name} was not found."
+  desktop_gui.py:5230:        )
+  desktop_gui.py:5231:
+  desktop_gui.py:5324:        if not target_crs.isValid():
+> desktop_gui.py:5325:            self.status_message.setText(
+  desktop_gui.py:5326:                "Country map unavailable: "
+  desktop_gui.py:5327:                f"invalid CRS {country_settings['crs']}."
+  desktop_gui.py:5328:            )
+  desktop_gui.py:5329:
+  desktop_gui.py:5407:
+> desktop_gui.py:5408:        self.overview_dock.setWindowTitle(
+  desktop_gui.py:5409:            self.text(
+  desktop_gui.py:5410:                "country_overview_named",
+  desktop_gui.py:5411:                country=country_name,
+  desktop_gui.py:5412:            )
+  desktop_gui.py:5414:
+> desktop_gui.py:5415:        self.status_message.setText(
+  desktop_gui.py:5416:            self.text(
+  desktop_gui.py:5417:                "country_selected",
+  desktop_gui.py:5418:                country=country_name,
+  desktop_gui.py:5419:            )
+  desktop_gui.py:5450:
+> desktop_gui.py:5451:                self.status_message.setText(
+  desktop_gui.py:5452:                    "Country overview unavailable: "
+  desktop_gui.py:5453:                    "world_countries.gpkg could not be loaded."
+  desktop_gui.py:5454:                )
+  desktop_gui.py:5455:
+  desktop_gui.py:5467:
+> desktop_gui.py:5468:                self.status_message.setText(
+  desktop_gui.py:5469:                    "Country overview unavailable: "
+  desktop_gui.py:5470:                    "satellite imagery could not be loaded."
+  desktop_gui.py:5471:                )
+  desktop_gui.py:5472:
+  desktop_gui.py:5667:        if selected_country is None:
+> desktop_gui.py:5668:            self.status_message.setText(
+  desktop_gui.py:5669:                "Country overview unavailable: "
+  desktop_gui.py:5670:                "the project location did not match a country."
+  desktop_gui.py:5671:            )
+  desktop_gui.py:5672:
+  desktop_gui.py:5734:    ):
+> desktop_gui.py:5735:        self.coordinate_label.setText(
+  desktop_gui.py:5736:            f"X: {point.x():.2f}  "
+  desktop_gui.py:5737:            f"Y: {point.y():.2f}"
+  desktop_gui.py:5738:        )
+  desktop_gui.py:5739:
+  desktop_gui.py:5743:    ):
+> desktop_gui.py:5744:        self.scale_label.setText(
+  desktop_gui.py:5745:            f"Scale: 1:{scale:,.0f}"
+  desktop_gui.py:5746:        )
+  desktop_gui.py:5747:
+  desktop_gui.py:5748:    def show_about(self):
+  desktop_gui.py:5801:
+> desktop_gui.py:5802:        about_box.setWindowTitle(
+  desktop_gui.py:5803:            "About Sovra"
+  desktop_gui.py:5804:        )
+  desktop_gui.py:5805:
+  desktop_gui.py:5806:        about_box.setTextFormat(
+  desktop_gui.py:5809:
+> desktop_gui.py:5810:        about_box.setText(
+  desktop_gui.py:5811:            "<div style='min-width: 420px;'>"
+  desktop_gui.py:5812:            "<h2 style='color: #153854;'>Sovra</h2>"
+  desktop_gui.py:5813:            "<p>Renewable-energy site analysis and "
+  desktop_gui.py:5814:            "GIS workspace.</p>"
+  desktop_gui.py:5826:        about_box.setStandardButtons(
+> desktop_gui.py:5827:            QMessageBox.Ok
+  desktop_gui.py:5828:        )
+  desktop_gui.py:5829:
+  desktop_gui.py:5830:        about_box.exec_()
+  desktop_gui.py:5831:
+
+

@@ -1,0 +1,26 @@
+/* Windows 11 */
+
+QWidget {
+    font-family: "Segoe UI";
+    font-size: 9pt;
+}
+
+QToolButton:hover,
+QPushButton:hover {
+    border-color: #0067c0;
+}
+
+QPushButton:default {
+    background-color: #0067c0;
+    border-color: #0067c0;
+    color: #ffffff;
+}
+
+QTabBar::tab:selected {
+    color: #005a9e;
+    border-bottom-color: #0067c0;
+}
+
+QProgressBar::chunk {
+    background-color: #0067c0;
+}

@@ -5,7 +5,9 @@ import numpy as np
 import processing
 
 from osgeo import gdal
-
+from scripts.postgis_raster import (
+    download_dem_from_postgis,
+)
 from qgis.core import (
     QgsCoordinateTransform,
     QgsGeometry,
@@ -19,7 +21,7 @@ from qgis.core import (
 
 def calculate_average_wind_speed(
     site_layer_path,
-    data_path,
+    source_path,
     temp_path,
     wind_settings,
 ):
@@ -51,10 +53,14 @@ def calculate_average_wind_speed(
         )
         return unavailable_result
 
-    source_path = os.path.join(
-        data_path,
-        wind_settings["source"],
-    )
+    if (
+        not source_path
+        or not os.path.isfile(source_path)
+    ):
+        raise FileNotFoundError(
+            "Configured wind-speed layer does not exist: "
+            f"{source_path}"
+        )
 
     if not os.path.isfile(source_path):
         raise FileNotFoundError(
@@ -91,17 +97,30 @@ def calculate_average_wind_speed(
             "Wind-speed analysis requires a polygon site."
         )
 
-    value_field = wind_settings["value_field"]
+    configured_value_field = (
+        wind_settings["value_field"]
+    )
 
-    field_names = {
-        field.name()
-        for field in source.fields()
-    }
+    value_field = next(
+        (
+            field.name()
+            for field in source.fields()
+            if field.name().casefold()
+            == configured_value_field.casefold()
+        ),
+        None,
+    )
 
-    if value_field not in field_names:
+    if value_field is None:
+        available_fields = ", ".join(
+            field.name()
+            for field in source.fields()
+        )
+
         raise ValueError(
-            f"Wind-speed field '{value_field}' does not exist "
-            f"in {source_path}"
+            "Wind-speed layer has no field matching "
+            f"{configured_value_field!r}. "
+            f"Available fields: {available_fields}"
         )
 
     output_path = os.path.join(
@@ -219,17 +238,27 @@ def read_site_load_values(
             f"{site_layer_path}"
         )
 
-    field_names = {
-        field.name()
-        for field in site.fields()
-    }
+    configured_field_name = field_name
 
-    if field_name not in field_names:
+    field_name = next(
+        (
+            field.name()
+            for field in site.fields()
+            if field.name().casefold()
+            == configured_field_name.casefold()
+        ),
+        None,
+    )
+
+    if field_name is None:
         print(
             f"{result_name} unavailable: "
-            f"field '{field_name}' does not exist."
+            f"field '{configured_field_name}' "
+            "does not exist."
         )
         return result
+
+    result["field_name"] = field_name
 
     values = []
 
@@ -265,6 +294,66 @@ def read_site_load_values(
         )
 
     return result
+
+def calculate_postgis_site_raster_mean(
+    site_layer_path,
+    site_extent,
+    temp_path,
+    raster_settings,
+    output_name,
+):
+    """
+    Download the indexed PostGIS raster subset covering the site,
+    then run the existing local raster-mean calculation.
+    """
+
+    if not raster_settings:
+        return calculate_site_raster_mean(
+            site_layer_path=site_layer_path,
+            data_path=temp_path,
+            temp_path=temp_path,
+            raster_settings=None,
+            output_name=output_name,
+        )
+
+    database_config = raster_settings.get(
+        "database"
+    )
+
+    if database_config is None:
+        raise ValueError(
+            "Meteorological raster settings have no "
+            "PostGIS database configuration."
+        )
+
+    local_settings = dict(raster_settings)
+
+    source_filename = (
+        f"postgis_source_{output_name}"
+    )
+
+    source_path = download_dem_from_postgis(
+        site_extent=site_extent,
+        dem_config=database_config,
+        temp_path=temp_path,
+        output_filename=source_filename,
+        raster_label=raster_settings.get(
+            "name",
+            "meteorological raster",
+        ),
+    )
+
+    local_settings["source"] = os.path.basename(
+        source_path
+    )
+
+    return calculate_site_raster_mean(
+        site_layer_path=site_layer_path,
+        data_path=temp_path,
+        temp_path=temp_path,
+        raster_settings=local_settings,
+        output_name=output_name,
+    )
 
 def calculate_site_raster_mean(
     site_layer_path,

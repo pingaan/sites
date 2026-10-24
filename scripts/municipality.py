@@ -1,7 +1,9 @@
 import os
+import psycopg2
 
 import pandas as pd
 
+from psycopg2 import sql
 from qgis.core import QgsVectorLayer
 
 
@@ -18,7 +20,6 @@ def normalize_municipality_name(value):
 
 def analyse_municipality_politics(
     site_layer_path,
-    data_path,
     political_settings,
 ):
     """
@@ -40,18 +41,20 @@ def analyse_municipality_politics(
         )
         return result
 
-    csv_path = os.path.join(
-        data_path,
-        political_settings["source"],
+    database_config = political_settings.get(
+        "database"
     )
 
-    result["source"] = csv_path
-
-    if not os.path.isfile(csv_path):
-        raise FileNotFoundError(
-            f"Configured political CSV does not exist: "
-            f"{csv_path}"
+    if database_config is None:
+        raise ValueError(
+            "Political settings have no PostGIS "
+            "database configuration."
         )
+
+    result["source"] = (
+        f"{database_config['schema']}."
+        f"{database_config['table']}"
+    )
 
     site = QgsVectorLayer(
         site_layer_path,
@@ -65,19 +68,25 @@ def analyse_municipality_politics(
             f"{site_layer_path}"
         )
 
-    site_field = political_settings[
+    configured_site_field = political_settings[
         "site_municipality_field"
     ]
 
-    site_field_names = {
-        field.name()
-        for field in site.fields()
-    }
+    site_field = next(
+        (
+            field.name()
+            for field in site.fields()
+            if field.name().casefold()
+            == configured_site_field.casefold()
+        ),
+        None,
+    )
 
-    if site_field not in site_field_names:
+    if site_field is None:
         print(
             "Municipality politics unavailable: "
-            f"site field '{site_field}' does not exist."
+            f"site field '{configured_site_field}' "
+            "does not exist."
         )
         return result
 
@@ -100,11 +109,6 @@ def analyse_municipality_politics(
         )
         return result
 
-    table = pd.read_csv(
-        csv_path,
-        encoding="utf-8",
-    )
-
     municipality_field = political_settings[
         "csv_municipality_field"
     ]
@@ -116,6 +120,110 @@ def analyse_municipality_politics(
     total_seats_field = political_settings[
         "total_seats_field"
     ]
+
+    password = os.environ.get(
+        "SITES_DB_PASSWORD"
+    )
+
+    if not password:
+        raise RuntimeError(
+            "SITES_DB_PASSWORD has not been set."
+        )
+
+    connection = psycopg2.connect(
+        host=os.environ.get(
+            "SITES_DB_HOST",
+            "127.0.0.1",
+        ),
+        port=int(
+            os.environ.get(
+                "SITES_DB_PORT",
+                "5433",
+            )
+        ),
+        dbname=os.environ.get(
+            "SITES_DB_NAME",
+            "sites",
+        ),
+        user=os.environ.get(
+            "SITES_DB_USER",
+            "sites_app",
+        ),
+        password=password,
+        connect_timeout=15,
+        application_name=(
+            "Sites municipality politics"
+        ),
+    )
+
+    party_columns = []
+
+    for party_code in political_settings[
+        "party_names"
+    ]:
+        party_columns.append(
+            sql.SQL("{} AS {}").format(
+                sql.Identifier(
+                    party_code.lower()
+                ),
+                sql.Identifier(party_code),
+            )
+        )
+
+    selected_columns = [
+        sql.SQL("{} AS {}").format(
+            sql.Identifier("municipality"),
+            sql.Identifier(
+                municipality_field
+            ),
+        ),
+        sql.SQL("{} AS {}").format(
+            sql.Identifier(
+                "political_control"
+            ),
+            sql.Identifier(control_field),
+        ),
+        sql.SQL("{} AS {}").format(
+            sql.Identifier("total_seats"),
+            sql.Identifier(
+                total_seats_field
+            ),
+        ),
+        *party_columns,
+    ]
+
+    query = sql.SQL(
+        """
+        SELECT {columns}
+        FROM {schema}.{table}
+        WHERE
+            lower(btrim(municipality))
+            = ANY(%s)
+        ORDER BY municipality
+        """
+    ).format(
+        columns=sql.SQL(", ").join(
+            selected_columns
+        ),
+        schema=sql.Identifier(
+            database_config["schema"]
+        ),
+        table=sql.Identifier(
+            database_config["table"]
+        ),
+    )
+
+    try:
+        table = pd.read_sql_query(
+            query.as_string(connection),
+            connection,
+            params=(
+                sorted(municipality_names),
+            ),
+        )
+
+    finally:
+        connection.close()
 
     required_fields = {
         municipality_field,

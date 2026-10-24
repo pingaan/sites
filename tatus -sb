@@ -1,0 +1,32 @@
+* [33mff6ac82[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/postgis-backend[m[33m, [m[1;31morigin/feature/postgis-backend[m[33m)[m continuing translating
+* [33m9b15fa3[m bashing through translations - 80isch % done
+* [33me42e2bf[m gui improvements
+* [33m621e027[m add Sovra desktop ui, map tools, project management and analysis progress
+* [33m22c454e[m gui improvements
+* [33mdb4d6ff[m added styling and updated info tab
+* [33m7794a5c[m adding project info as md
+* [33m02132ac[m gui base established
+* [33m28f8b2f[m gui - first step
+* [33me980c15[m updated settings
+* [33m8d222ee[m fin and swe ready - time to start defining qt and ui
+* [33m0955ca1[m pot_flder changed and more look pg changes
+* [33me3c9405[m changed from local to pg for estates (sweden)
+* [33med6858c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m added unique folder ids for each run
+* [33m545280d[m added soildepth, end species, clean up folder
+* [33me2845be[m added support for redlisted species (se)
+* [33m71f24b4[m full recreation complete
+* [33m0044ab1[m continuing the solar info calcs
+* [33m2bc9581[m adding solar gis rasters
+* [33m5b2d5ae[m recreation continuing
+* [33m15792fa[m recreation continues
+* [33m98de0df[m finished migratin to windows
+*   [33ma2ef366[m Merge remote main with Windows setup
+[32m|[m[33m\[m  
+[32m|[m * [33m0d8a15f[m continueing from windows
+* [33m|[m [33m43b1ef4[m switching to windows
+[33m|[m[33m/[m  
+* [33m9121279[m still going
+* [33m02d5a2c[m still going on updating
+* [33m7c5943b[m still tidying up the base scripts
+* [33m224f09b[m starting up continues
+* [33m0b46b59[m starting up

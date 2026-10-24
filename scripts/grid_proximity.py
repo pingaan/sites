@@ -245,6 +245,16 @@ def analyse_grid_proximity(
             )
             continue
 
+        output_definition = layer_output.get(
+            "definition",
+            {},
+        )
+
+        display_name = output_definition.get(
+            "display_name",
+            layer_name,
+        )
+
         output_path = layer_output.get(
             "output_path"
         )
@@ -255,13 +265,13 @@ def analyse_grid_proximity(
         ):
             print(
                 f"Grid layer has no local output: "
-                f"{layer_name}"
+                f"{display_name}"
             )
             continue
 
         infrastructure_layer = QgsVectorLayer(
             output_path,
-            layer_name,
+            display_name,
             "ogr",
         )
 
@@ -274,20 +284,20 @@ def analyse_grid_proximity(
         if infrastructure_layer.featureCount() == 0:
             print(
                 f"Grid layer has no local features: "
-                f"{layer_name}"
+                f"{display_name}"
             )
             continue
 
         if not infrastructure_layer.crs().isValid():
             raise ValueError(
                 f"Grid layer has no valid CRS: "
-                f"{layer_name}"
+                f"{display_name}"
             )
 
         if infrastructure_layer.crs() != analysis_layer.crs():
             raise ValueError(
                 f"Grid layer CRS does not match the "
-                f"analysis site: {layer_name}"
+                f"analysis site: {display_name}"
             )
 
         distance, nearest_feature = (
@@ -303,7 +313,7 @@ def analyse_grid_proximity(
         ):
             print(
                 f"Grid layer has no usable geometry: "
-                f"{layer_name}"
+                f"{display_name}"
             )
             continue
 
@@ -325,7 +335,7 @@ def analyse_grid_proximity(
         )
 
         result = {
-            "name": layer_name,
+            "name": display_name,
             "type": layer_type,
             "distance_m": distance_m,
             "crossing": (
@@ -382,7 +392,7 @@ def analyse_grid_proximity(
             )
 
         print(
-            f"Nearest {layer_name}: {distance_text}"
+            f"Nearest {display_name}: {distance_text}"
         )
 
     if not results:

@@ -3,7 +3,10 @@ from urllib.parse import urlencode
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
-
+from scripts.translations import (
+    translated_layer_name,
+    ui_text,
+)
 from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsFillSymbol,
@@ -28,6 +31,7 @@ from qgis.core import (
 def prepare_map_project(
     working_crs,
     title,
+    language="en",
 ):
     """
     Prepare the QGIS project and its layer groups.
@@ -49,10 +53,22 @@ def prepare_map_project(
     root = project.layerTreeRoot()
 
     group_names = {
-        "wind": "Wind",
-        "solar": "Solar",
-        "misc": "Other",
-        "slopes": "Steep slopes",
+        "wind": ui_text(
+            language,
+            "project_group_wind",
+        ),
+        "solar": ui_text(
+            language,
+            "project_group_solar",
+        ),
+        "misc": ui_text(
+            language,
+            "project_group_other",
+        ),
+        "slopes": ui_text(
+            language,
+            "project_group_steep_slopes",
+        ),
     }
 
     groups = {
@@ -83,6 +99,7 @@ def prepare_map_project(
 def add_basemaps(
     map_data,
     basemap_definitions,
+    language="en",
 ):
     """
     Add configured XYZ basemaps beneath the analysis groups.
@@ -93,7 +110,12 @@ def add_basemaps(
     project = map_data["project"]
     root = project.layerTreeRoot()
 
-    basemap_group = root.addGroup("Basemaps")
+    basemap_group = root.addGroup(
+        ui_text(
+            language,
+            "project_group_basemaps",
+        )
+    )
 
     layer_ids = {}
 
@@ -138,6 +160,7 @@ def add_analysis_outputs(
     site_layer_path,
     solar_candidate_path,
     wind_candidate_path,
+    language="en",
 ):
     """
     Add the estate boundary and solar/wind candidate layers.
@@ -152,7 +175,10 @@ def add_analysis_outputs(
         {
             "id": "estate",
             "path": site_layer_path,
-            "name": "Analysis estate",
+            "name": ui_text(
+                language,
+                "project_layer_analysis_estate",
+            ),
             "group": "no_folder",
             "style": {
                 "style": "no",
@@ -164,7 +190,10 @@ def add_analysis_outputs(
         {
             "id": "solar",
             "path": solar_candidate_path,
-            "name": "Solar candidate area",
+            "name": ui_text(
+                language,
+                "project_layer_solar_candidate",
+            ),
             "group": "solar",
             "style": {
                 "color": "255,210,60,140",
@@ -176,7 +205,10 @@ def add_analysis_outputs(
         {
             "id": "wind",
             "path": wind_candidate_path,
-            "name": "Wind candidate area",
+            "name": ui_text(
+                language,
+                "project_layer_wind_candidate",
+            ),
             "group": "wind",
             "style": {
                 "color": "70,170,255,140",
@@ -213,6 +245,13 @@ def add_analysis_outputs(
         )
 
         layer.renderer().setSymbol(symbol)
+
+        layer.setCustomProperty(
+            "sites/analysis_output",
+            definition["id"],
+        )
+
+        project.addMapLayer(layer, False)
 
         project.addMapLayer(layer, False)
 
@@ -268,6 +307,7 @@ def add_supporting_outputs(
     neighbouring_estates_path,
     ineligible_terrain_path,
     contour_lines_path,
+    language="en",
 ):
     """
     Add completed context and terrain outputs to the map project.
@@ -276,20 +316,14 @@ def add_supporting_outputs(
     """
 
     project = map_data["project"]
-    root = project.layerTreeRoot()
 
-    other_group = root.findGroup("Other")
-    slopes_group = root.findGroup("Steep slopes")
+    other_group = map_data[
+        "groups"
+    ]["misc"]
 
-    if other_group is None:
-        raise RuntimeError(
-            "The map project has no 'Other' group."
-        )
-
-    if slopes_group is None:
-        raise RuntimeError(
-            "The map project has no 'Steep slopes' group."
-        )
+    slopes_group = map_data[
+        "groups"
+    ]["slopes"]
 
     layer_ids = {}
 
@@ -368,7 +402,10 @@ def add_supporting_outputs(
 
     add_vector_layer(
         layer_path=neighbouring_estates_path,
-        layer_name="Neighbouring estates",
+        layer_name=ui_text(
+            language,
+            "package_layer_neighbouring_estates",
+        ),
         group=other_group,
         symbol=neighbour_symbol,
         result_key="neighbouring_estates",
@@ -376,7 +413,10 @@ def add_supporting_outputs(
 
     add_vector_layer(
         layer_path=ineligible_terrain_path,
-        layer_name="Ineligible terrain",
+        layer_name=ui_text(
+            language,
+            "package_layer_ineligible_terrain",
+        ),
         group=slopes_group,
         symbol=terrain_symbol,
         result_key="ineligible_terrain",
@@ -384,7 +424,10 @@ def add_supporting_outputs(
 
     add_vector_layer(
         layer_path=contour_lines_path,
-        layer_name="Contour lines",
+        layer_name=ui_text(
+            language,
+            "package_layer_contour_lines",
+        ),
         group=other_group,
         symbol=contour_symbol,
         result_key="contour_lines",
@@ -823,11 +866,134 @@ def apply_country_layer_style(
         QgsSingleSymbolRenderer(symbol)
     )
 
+def apply_configured_constraint_style(
+    layer,
+    definition,
+):
+    """
+    Apply the user's hard-constraint or indicator styling.
+
+    Hard constraints use solid, opaque symbols. Indicators use
+    hatching, dashes or outlined markers depending on geometry.
+    """
+
+    treatment = definition.get(
+        "treatment",
+        "hard",
+    )
+
+    colour = QColor(
+        definition.get(
+            "colour",
+            "#d27800",
+        )
+    )
+
+    if not colour.isValid():
+        colour = QColor(
+            "#d27800"
+        )
+
+    colour.setAlpha(
+        255
+    )
+
+    colour_name = colour.name(
+        QColor.HexRgb
+    )
+
+    outline_colour = colour.darker(
+        135
+    ).name(
+        QColor.HexRgb
+    )
+
+    geometry_type = layer.geometryType()
+
+    if geometry_type == QgsWkbTypes.PolygonGeometry:
+        if treatment == "indicator":
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "color": colour_name,
+                    "style": "b_diagonal",
+                    "outline_color": colour_name,
+                    "outline_width": "0.5",
+                }
+            )
+
+        else:
+            symbol = QgsFillSymbol.createSimple(
+                {
+                    "color": colour_name,
+                    "style": "solid",
+                    "outline_color": outline_colour,
+                    "outline_width": "0.4",
+                }
+            )
+
+    elif geometry_type == QgsWkbTypes.LineGeometry:
+        line_style = (
+            "dash"
+            if treatment == "indicator"
+            else "solid"
+        )
+
+        symbol = QgsLineSymbol.createSimple(
+            {
+                "line_color": colour_name,
+                "line_width": "0.8",
+                "line_style": line_style,
+            }
+        )
+
+    elif geometry_type == QgsWkbTypes.PointGeometry:
+        if treatment == "indicator":
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": "255,255,255,0",
+                    "outline_color": colour_name,
+                    "outline_width": "0.8",
+                    "size": "3.2",
+                }
+            )
+
+        else:
+            symbol = QgsMarkerSymbol.createSimple(
+                {
+                    "name": "circle",
+                    "color": colour_name,
+                    "outline_color": outline_colour,
+                    "outline_width": "0.4",
+                    "size": "3.2",
+                }
+            )
+
+    else:
+        return
+
+    layer.setRenderer(
+        QgsSingleSymbolRenderer(
+            symbol
+        )
+    )
+
+    layer.setCustomProperty(
+        "sovra/treatment",
+        treatment,
+    )
+
+    layer.setCustomProperty(
+        "sovra/colour",
+        colour_name,
+    )
+
 def add_country_outputs(
     map_data,
     country_layer_outputs,
     style_resolver=None,
     svg_path=None,
+    language="en",
 ):
     """
     Add locally clipped country constraint layers to the project.
@@ -836,22 +1002,23 @@ def add_country_outputs(
     """
 
     project = map_data["project"]
-    root = project.layerTreeRoot()
 
-    other_group = root.findGroup("Other")
+    other_group = map_data[
+        "groups"
+    ]["misc"]
 
-    if other_group is None:
-        raise RuntimeError(
-            "The map project has no 'Other' group."
-        )
+    constraints_group_name = ui_text(
+        language,
+        "project_group_country_constraints",
+    )
 
     constraints_group = other_group.findGroup(
-        "Country constraints"
+        constraints_group_name
     )
 
     if constraints_group is None:
         constraints_group = other_group.addGroup(
-            "Country constraints"
+            constraints_group_name
         )
 
     constraints_group.setExpanded(False)
@@ -861,7 +1028,15 @@ def add_country_outputs(
     for layer_output in country_layer_outputs:
 
         definition = layer_output["definition"]
-        layer_name = definition["name"]
+
+        internal_layer_name = (
+            definition["name"]
+        )
+
+        layer_name = translated_layer_name(
+            definition=definition,
+            language=language,
+        )
         output_path = layer_output.get(
             "output_path"
         )
@@ -875,7 +1050,7 @@ def add_country_outputs(
                 f"{layer_name} — no file."
             )
 
-            layer_ids[layer_name] = None
+            layer_ids[internal_layer_name] = None
             continue
 
         layer = QgsVectorLayer(
@@ -896,7 +1071,7 @@ def add_country_outputs(
                 f"{layer_name} — no features."
             )
 
-            layer_ids[layer_name] = None
+            layer_ids[internal_layer_name] = None
             continue
 
         style = (
@@ -916,6 +1091,11 @@ def add_country_outputs(
             svg_path=svg_path,
         )
 
+        apply_configured_constraint_style(
+            layer=layer,
+            definition=definition,
+        )
+
         project.addMapLayer(
             layer,
             False,
@@ -929,7 +1109,7 @@ def add_country_outputs(
             visible
         )
 
-        layer_ids[layer_name] = layer.id()
+        layer_ids[internal_layer_name] = layer.id()
 
         print(
             f"Country constraint added to map: "
@@ -941,6 +1121,7 @@ def add_country_outputs(
 def add_bos_coverage(
     map_data,
     bos_coverage_path,
+    language="en",
 ):
     """
     Add the final classified BoS coverage layer to the
@@ -960,7 +1141,10 @@ def add_bos_coverage(
 
     layer = QgsVectorLayer(
         bos_coverage_path,
-        "BoS land-cover coverage",
+        ui_text(
+            language,
+            "project_layer_bos_coverage",
+        ),
         "ogr",
     )
 
@@ -983,30 +1167,41 @@ def add_bos_coverage(
 
     category_styles = {
         "Open field": {
+            "label_key": "project_bos_open_field",
             "color": "#e5d76f",
             "outline": "#9c8d32",
         },
         "Peat quarry": {
+            "label_key": "project_bos_peat_quarry",
             "color": "#795548",
             "outline": "#4e342e",
         },
         "Forest": {
+            "label_key": "project_bos_forest",
             "color": "#4f8a4c",
             "outline": "#285a2b",
         },
         "Wetland": {
+            "label_key": "project_bos_wetland",
             "color": "#55a6cf",
             "outline": "#276987",
         },
         "Rocky terrain": {
+            "label_key": "project_bos_rocky_terrain",
             "color": "#9e9e9e",
             "outline": "#616161",
         },
         "Other land cover": {
+            "label_key": (
+                "project_bos_other_land_cover"
+            ),
             "color": "#c8a6d8",
             "outline": "#79558a",
         },
         "No land-cover data": {
+            "label_key": (
+                "project_bos_no_land_cover"
+            ),
             "color": "#eeeeee",
             "outline": "#777777",
         },
@@ -1033,7 +1228,10 @@ def add_bos_coverage(
         category = QgsRendererCategory(
             group_name,
             symbol,
-            group_name,
+            ui_text(
+                language,
+                style["label_key"],
+            ),
         )
 
         categories.append(category)
@@ -1052,13 +1250,18 @@ def add_bos_coverage(
 
     root = project.layerTreeRoot()
 
+    bos_group_name = ui_text(
+        language,
+        "project_group_bos_analysis",
+    )
+
     bos_group = root.findGroup(
-        "BoS analysis"
+        bos_group_name
     )
 
     if bos_group is None:
         bos_group = root.addGroup(
-            "BoS analysis"
+            bos_group_name
         )
 
     node = bos_group.addLayer(layer)
@@ -1076,6 +1279,7 @@ def add_bos_coverage(
 def add_redlisted_species(
     map_data,
     redlisted_species_result,
+    language="en",
 ):
     """
     Add offline red-listed species observations to the QGIS
@@ -1109,7 +1313,10 @@ def add_redlisted_species(
 
     layer = QgsVectorLayer(
         output_path,
-        "Red-listed species observations",
+        ui_text(
+            language,
+            "project_layer_redlisted_species",
+        ),
         "ogr",
     )
 
@@ -1134,22 +1341,30 @@ def add_redlisted_species(
 
     category_styles = {
         "CR": {
-            "label": "Critically Endangered (CR)",
+            "label_key": (
+                "project_species_critically_endangered"
+            ),
             "color": "#7f0000",
             "size": "3.5",
         },
         "EN": {
-            "label": "Endangered (EN)",
+            "label_key": (
+                "project_species_endangered"
+            ),
             "color": "#d7301f",
             "size": "3.2",
         },
         "VU": {
-            "label": "Vulnerable (VU)",
+            "label_key": (
+                "project_species_vulnerable"
+            ),
             "color": "#fc8d59",
             "size": "3.0",
         },
         "NT": {
-            "label": "Near Threatened (NT)",
+            "label_key": (
+                "project_species_near_threatened"
+            ),
             "color": "#fdbb30",
             "size": "2.8",
         },
@@ -1175,7 +1390,10 @@ def add_redlisted_species(
             QgsRendererCategory(
                 category_value,
                 symbol,
-                style["label"],
+                ui_text(
+                    language,
+                    style["label_key"],
+                ),
             )
         )
 
@@ -1188,8 +1406,16 @@ def add_redlisted_species(
 
     # Show the complete species name in identify results,
     # layer previews and map tips.
+    unknown_species = ui_text(
+        language,
+        "project_unknown_species",
+    ).replace(
+        "'",
+        "''",
+    )
+
     layer.setDisplayExpression(
-        """
+        f"""
         CASE
             WHEN "SPECIES" IS NOT NULL
                  AND "SPECIES" != ''
@@ -1197,7 +1423,7 @@ def add_redlisted_species(
             WHEN "SCI_NAME" IS NOT NULL
                  AND "SCI_NAME" != ''
             THEN "SCI_NAME"
-            ELSE 'Unknown species'
+            ELSE '{unknown_species}'
         END
         """
     )
@@ -1211,13 +1437,18 @@ def add_redlisted_species(
 
     root = project.layerTreeRoot()
 
+    species_group_name = ui_text(
+        language,
+        "project_group_species_observations",
+    )
+
     species_group = root.findGroup(
-        "Species observations"
+        species_group_name
     )
 
     if species_group is None:
         species_group = root.addGroup(
-            "Species observations"
+            species_group_name
         )
 
     node = species_group.addLayer(layer)

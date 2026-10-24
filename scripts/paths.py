@@ -2,6 +2,51 @@ import os
 import platform
 
 
+def _get_projects_root(os_name):
+    """
+    Return the user-specific local Sites project directory.
+    """
+
+    user_home = os.path.expanduser("~")
+
+    if os_name == "Windows":
+        application_data = os.environ.get(
+            "LOCALAPPDATA",
+            os.path.join(
+                user_home,
+                "AppData",
+                "Local",
+            ),
+        )
+
+    elif os_name == "Darwin":
+        application_data = os.path.join(
+            user_home,
+            "Library",
+            "Application Support",
+        )
+
+    elif os_name == "Linux":
+        application_data = os.environ.get(
+            "XDG_DATA_HOME",
+            os.path.join(
+                user_home,
+                ".local",
+                "share",
+            ),
+        )
+
+    else:
+        raise OSError(
+            f"Unsupported operating system: {os_name}"
+        )
+
+    return os.path.join(
+        application_data,
+        "Sites",
+        "Projects",
+    )
+
 def get_paths():
     """
     Return the filesystem paths used by the application
@@ -9,6 +54,10 @@ def get_paths():
     """
 
     os_name = platform.system()
+
+    projects_root = _get_projects_root(
+        os_name
+    )
 
     if os_name == "Windows":
 
@@ -113,6 +162,14 @@ def get_paths():
         raise OSError(
             f"Unsupported operating system: {os_name}"
         )
+
+    os.makedirs(
+        projects_root,
+        exist_ok=True,
+    )
+
+    paths["projects_root"] = projects_root
+    paths["pot_path"] = projects_root
 
     paths["dem_index_crs"] = "EPSG:3006"
 

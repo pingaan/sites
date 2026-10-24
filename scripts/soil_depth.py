@@ -228,19 +228,30 @@ def analyse_soil_depth_by_type(
             f"{soil_layer_path}"
         )
 
-    soil_type_field = settings[
+    configured_soil_type_field = settings[
         "soil_type_field"
     ]
 
-    if (
-        soil_layer.fields().indexOf(
-            soil_type_field
+    soil_type_field = next(
+        (
+            field.name()
+            for field in soil_layer.fields()
+            if field.name().casefold()
+            == configured_soil_type_field.casefold()
+        ),
+        None,
+    )
+
+    if soil_type_field is None:
+        available_fields = ", ".join(
+            field.name()
+            for field in soil_layer.fields()
         )
-        == -1
-    ):
+
         raise ValueError(
-            f"Soil-type layer has no field named "
-            f"{soil_type_field!r}."
+            "Soil-type layer has no field matching "
+            f"{configured_soil_type_field!r}. "
+            f"Available fields: {available_fields}"
         )
 
     raster_path = os.path.join(

@@ -75,7 +75,10 @@ def clip_country_layers(
 
     for number, definition in enumerate(layer_definitions, start=1):
         filename = definition["source"]
-        display_name = definition["name"]
+        display_name = definition.get(
+            "display_name",
+            definition["name"],
+        )
 
         source_path = os.path.join(data_path, filename)
 
@@ -239,7 +242,10 @@ def buffer_country_layers(
 
         layer = QgsVectorLayer(
             source_path,
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 
@@ -372,7 +378,10 @@ def save_country_layer_outputs(
 
         saved_layer = QgsVectorLayer(
             output_path,
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 
@@ -421,7 +430,10 @@ def create_country_layer_centroids(
 
         polygons = QgsVectorLayer(
             polygon_path,
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 
@@ -458,7 +470,10 @@ def create_country_layer_centroids(
 
         centroids = QgsVectorLayer(
             centroid_path,
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 
@@ -505,8 +520,34 @@ def subtract_solar_constraints(
     solar_constraints = [
         item
         for item in country_layer_outputs
-        if item["solar_buffered"]
+        if (
+            item["solar_buffered"]
+            and item["definition"].get(
+                "treatment",
+                "hard",
+            )
+            == "hard"
+        )
     ]
+
+    solar_indicators = [
+        item
+        for item in country_layer_outputs
+        if (
+            item["solar_buffered"]
+            and item["definition"].get(
+                "treatment",
+                "hard",
+            )
+            == "indicator"
+        )
+    ]
+
+    if solar_indicators:
+        print(
+            "Solar indicators retained without subtraction: "
+            f"{len(solar_indicators)}"
+        )
 
     for number, item in enumerate(solar_constraints, start=1):
         if remaining.featureCount() == 0:
@@ -517,7 +558,10 @@ def subtract_solar_constraints(
 
         constraint = QgsVectorLayer(
             item["solar_path"],
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 
@@ -996,8 +1040,34 @@ def subtract_wind_constraints(
     wind_constraints = [
         item
         for item in country_layer_outputs
-        if item["wind_buffered"]
+        if (
+            item["wind_buffered"]
+            and item["definition"].get(
+                "treatment",
+                "hard",
+            )
+            == "hard"
+        )
     ]
+
+    wind_indicators = [
+        item
+        for item in country_layer_outputs
+        if (
+            item["wind_buffered"]
+            and item["definition"].get(
+                "treatment",
+                "hard",
+            )
+            == "indicator"
+        )
+    ]
+
+    if wind_indicators:
+        print(
+            "Wind indicators retained without subtraction: "
+            f"{len(wind_indicators)}"
+        )
 
     for number, item in enumerate(wind_constraints, start=1):
         if remaining.featureCount() == 0:
@@ -1008,7 +1078,10 @@ def subtract_wind_constraints(
 
         constraint = QgsVectorLayer(
             item["wind_path"],
-            definition["name"],
+            definition.get(
+                "display_name",
+                definition["name"],
+            ),
             "ogr",
         )
 

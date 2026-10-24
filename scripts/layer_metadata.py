@@ -1,18 +1,23 @@
 import json
 import os
+import tempfile
 import time
 
-from datetime import (
-    datetime,
-    timezone,
-)
-
 from pathlib import Path
-
-import psycopg2
+from urllib.request import (
+    Request,
+    urlopen,
+)
 
 
 CACHE_MAX_AGE_SECONDS = 24 * 60 * 60
+
+DEFAULT_METADATA_URL = (
+    "http://192.168.1.111:8080/"
+    "layer_metadata.json"
+)
+
+MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024
 
 
 def metadata_cache_path():
@@ -37,9 +42,12 @@ def metadata_cache_path():
     )
 
 
-def load_database_environment():
+def load_application_environment():
     """
-    Load the existing Sites database configuration.
+    Load optional Sovra environment settings.
+
+    SITES_LAYER_METADATA_URL may be placed in the existing
+    database.env file to override the default metadata URL.
     """
 
     local_app_data = os.environ.get(
@@ -92,17 +100,6 @@ def load_database_environment():
             )
 
 
-def serialise_value(value):
-    """
-    Convert database values into JSON-safe values.
-    """
-
-    if isinstance(value, datetime):
-        return value.isoformat()
-
-    return value
-
-
 def cache_needs_refresh():
     """
     Return True when the cache is absent or over 24 hours old.
@@ -124,144 +121,203 @@ def cache_needs_refresh():
     )
 
 
-def update_layer_metadata_cache():
+def validate_metadata_payload(
+    payload,
+):
     """
-    Download the complete layer catalogue into a local JSON file.
-
-    The existing cache is replaced only after a successful query
-    and successful JSON write.
+    Validate downloaded metadata before replacing the cache.
     """
 
-    load_database_environment()
+    if not isinstance(payload, dict):
+        raise ValueError(
+            "The layer metadata response is not a JSON object."
+        )
 
-    password = os.environ.get(
-        "SITES_DB_PASSWORD"
+    if payload.get("format_version") != 1:
+        raise ValueError(
+            "The layer metadata format version is unsupported."
+        )
+
+    generated_at = payload.get(
+        "generated_at"
     )
 
-    if not password:
-        raise RuntimeError(
-            "SITES_DB_PASSWORD is not configured."
+    if not generated_at:
+        raise ValueError(
+            "The layer metadata has no generation timestamp."
         )
 
-    connection = None
+    layers = payload.get(
+        "layers"
+    )
 
-    try:
-        connection = psycopg2.connect(
-            host=os.environ.get(
-                "SITES_DB_HOST",
-                "127.0.0.1",
-            ),
-            port=int(
-                os.environ.get(
-                    "SITES_DB_PORT",
-                    "5433",
-                )
-            ),
-            dbname=os.environ.get(
-                "SITES_DB_NAME",
-                "sites",
-            ),
-            user=os.environ.get(
-                "SITES_DB_USER",
-                "sites_app",
-            ),
-            password=password,
-            connect_timeout=10,
-            application_name=(
-                "Sovra metadata cache update"
-            ),
+    if not isinstance(layers, list):
+        raise ValueError(
+            "The layer metadata has no valid layer list."
         )
 
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    schema_name,
-                    table_name,
-                    country_code,
-                    layer_type,
-                    data_column,
-                    translation_key,
-                    dataset_name,
-                    provider,
-                    source_url,
-                    source_updated_at,
-                    migrated_at,
-                    record_count,
-                    srid,
-                    geometry_type,
-                    migration_status,
-                    metadata_updated_at
-                FROM metadata.layer_catalog
-                ORDER BY
-                    country_code,
-                    layer_type,
-                    table_name
-                """
+    for number, layer in enumerate(
+        layers,
+        start=1,
+    ):
+        if not isinstance(layer, dict):
+            raise ValueError(
+                "Layer metadata entry "
+                f"{number} is not a JSON object."
             )
 
-            column_names = [
-                description.name
-                for description in cursor.description
-            ]
-
-            layers = []
-
-            for database_row in cursor.fetchall():
-                layer = {}
-
-                for column_name, value in zip(
-                    column_names,
-                    database_row,
-                ):
-                    layer[column_name] = (
-                        serialise_value(value)
-                    )
-
-                layers.append(
-                    layer
+        for required_key in (
+            "schema_name",
+            "table_name",
+            "country_code",
+            "layer_type",
+        ):
+            if not layer.get(
+                required_key
+            ):
+                raise ValueError(
+                    "Layer metadata entry "
+                    f"{number} has no "
+                    f"{required_key}."
                 )
 
-        payload = {
-            "format_version": 1,
-            "generated_at": (
-                datetime.now(
-                    timezone.utc
-                ).isoformat()
+    return payload
+
+
+def download_metadata_payload():
+    """
+    Download and validate the published metadata catalogue.
+    """
+
+    load_application_environment()
+
+    metadata_url = os.environ.get(
+        "SITES_LAYER_METADATA_URL",
+        DEFAULT_METADATA_URL,
+    ).strip()
+
+    if not metadata_url:
+        raise RuntimeError(
+            "SITES_LAYER_METADATA_URL is empty."
+        )
+
+    request = Request(
+        metadata_url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": (
+                "Sovra layer-metadata client"
             ),
-            "layers": layers,
-        }
+        },
+    )
 
-        cache_path = metadata_cache_path()
-
-        cache_path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
+    with urlopen(
+        request,
+        timeout=10,
+    ) as response:
+        response_data = response.read(
+            MAX_DOWNLOAD_BYTES + 1
         )
 
-        temporary_path = cache_path.with_suffix(
-            ".json.part"
+    if len(response_data) > MAX_DOWNLOAD_BYTES:
+        raise RuntimeError(
+            "The layer metadata download is unexpectedly large."
         )
 
-        temporary_path.write_text(
-            json.dumps(
+    try:
+        payload = json.loads(
+            response_data.decode(
+                "utf-8-sig"
+            )
+        )
+
+    except (
+        UnicodeError,
+        json.JSONDecodeError,
+    ) as error:
+        raise ValueError(
+            "The downloaded layer metadata is not valid JSON."
+        ) from error
+
+    return validate_metadata_payload(
+        payload
+    )
+
+
+def write_metadata_cache(
+    payload,
+):
+    """
+    Atomically replace the local metadata cache.
+    """
+
+    cache_path = metadata_cache_path()
+
+    cache_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    temporary_handle = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=cache_path.parent,
+        prefix="layer_metadata.",
+        suffix=".json.part",
+        delete=False,
+    )
+
+    temporary_path = Path(
+        temporary_handle.name
+    )
+
+    try:
+        with temporary_handle:
+            json.dump(
                 payload,
+                temporary_handle,
                 ensure_ascii=False,
                 indent=2,
-            ),
-            encoding="utf-8",
-        )
+            )
+
+            temporary_handle.write(
+                "\n"
+            )
+
+            temporary_handle.flush()
+
+            os.fsync(
+                temporary_handle.fileno()
+            )
 
         os.replace(
             temporary_path,
             cache_path,
         )
 
-        return cache_path
+    except Exception:
+        temporary_path.unlink(
+            missing_ok=True
+        )
 
-    finally:
-        if connection is not None:
-            connection.close()
+        raise
+
+    return cache_path
+
+
+def update_layer_metadata_cache():
+    """
+    Download the published catalogue into the local cache.
+
+    The existing cache is replaced only after a successful
+    download, validation and JSON write.
+    """
+
+    payload = download_metadata_payload()
+
+    return write_metadata_cache(
+        payload
+    )
 
 
 def fetch_layer_metadata(
@@ -270,7 +326,7 @@ def fetch_layer_metadata(
     """
     Read one country's metadata exclusively from the local cache.
 
-    No database connection is attempted here.
+    No network or database connection is attempted here.
     """
 
     cache_path = metadata_cache_path()
@@ -290,10 +346,16 @@ def fetch_layer_metadata(
                 encoding="utf-8"
             )
         )
+
+        validate_metadata_payload(
+            payload
+        )
+
     except (
         OSError,
         UnicodeError,
         json.JSONDecodeError,
+        ValueError,
     ) as error:
         return (
             {},

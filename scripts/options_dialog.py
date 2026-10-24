@@ -1,3 +1,4 @@
+from datetime import datetime
 from scripts.translations import (
     translated_layer_name,
 )
@@ -32,6 +33,32 @@ from scripts.layer_metadata import (
 
 TEXT = {
     "en": {
+            "select_layer_colour": "Select layer colour",
+        "source_file": "Source file",
+        "database_layer": "Database layer",
+        "geometry_column": "Geometry column",
+        "crs": "CRS",
+        "dataset": "Dataset",
+        "provider": "Provider",
+        "source_updated": "Source updated",
+        "migrated_to_sovra": "Migrated to Sovra",
+        "last_accessed": "Last accessed",
+        "metadata_updated": "Metadata updated",
+        "records": "Records",
+        "geometry": "Geometry",
+        "migration_status": "Migration status",
+        "source_url": "Source URL",
+        "not_recorded": "Not recorded",
+        "no_catalogue_entry": (
+            "No catalogue entry was found for this layer."
+        ),
+        "metadata_unavailable": (
+            "Layer metadata is currently unavailable."
+        ),
+        "migration_unknown": "Unknown",
+        "migration_running": "Running",
+        "migration_success": "Successful",
+        "migration_failed": "Failed",
         "country_sweden": "Sweden",
         "country_finland": "Finland",
         "layer": "Layer",
@@ -54,6 +81,32 @@ TEXT = {
         ),
     },
     "sv": {
+        "select_layer_colour": "Välj lagerfärg",
+        "source_file": "Källfil",
+        "database_layer": "Databaslager",
+        "geometry_column": "Geometrikolumn",
+        "crs": "Koordinatsystem",
+        "dataset": "Datamängd",
+        "provider": "Dataleverantör",
+        "source_updated": "Källan uppdaterad",
+        "migrated_to_sovra": "Migrerad till Sovra",
+        "last_accessed": "Senast använd",
+        "metadata_updated": "Metadata uppdaterad",
+        "records": "Poster",
+        "geometry": "Geometri",
+        "migration_status": "Migreringsstatus",
+        "source_url": "Källans URL",
+        "not_recorded": "Inte registrerat",
+        "no_catalogue_entry": (
+            "Ingen katalogpost hittades för detta lager."
+        ),
+        "metadata_unavailable": (
+            "Lagermetadata är inte tillgänglig just nu."
+        ),
+        "migration_unknown": "Okänd",
+        "migration_running": "Pågår",
+        "migration_success": "Lyckades",
+        "migration_failed": "Misslyckades",
         "country_sweden": "Sverige",
         "country_finland": "Finland",        
         "layer": "Lager",
@@ -77,6 +130,33 @@ TEXT = {
         ),
     },
     "fi": {
+        "select_layer_colour": "Valitse tason väri",
+        "source_file": "Lähdetiedosto",
+        "database_layer": "Tietokantataso",
+        "geometry_column": "Geometriasarake",
+        "crs": "Koordinaattijärjestelmä",
+        "dataset": "Aineisto",
+        "provider": "Tietojen tarjoaja",
+        "source_updated": "Lähde päivitetty",
+        "migrated_to_sovra": "Siirretty Sovraan",
+        "last_accessed": "Viimeksi käytetty",
+        "metadata_updated": "Metatiedot päivitetty",
+        "records": "Tietueet",
+        "geometry": "Geometria",
+        "migration_status": "Siirron tila",
+        "source_url": "Lähteen URL",
+        "not_recorded": "Ei tallennettu",
+        "no_catalogue_entry": (
+            "Tälle tasolle ei löytynyt luettelomerkintää."
+        ),
+        "metadata_unavailable": (
+            "Tason metatiedot eivät ole tällä hetkellä "
+            "saatavilla."
+        ),
+        "migration_unknown": "Tuntematon",
+        "migration_running": "Käynnissä",
+        "migration_success": "Onnistui",
+        "migration_failed": "Epäonnistui",
         "country_sweden": "Ruotsi",
         "country_finland": "Suomi",
         "layer": "Taso",
@@ -560,7 +640,10 @@ class OptionsDialog(QDialog):
         selected_colour = QColorDialog.getColor(
             current_colour,
             self,
-            "Select layer colour",
+            option_text(
+                self.current_language,
+                "select_layer_colour",
+            ),
         )
 
         if not selected_colour.isValid():
@@ -579,14 +662,30 @@ class OptionsDialog(QDialog):
         Format a catalogue timestamp for a tooltip.
         """
 
-        if value is None:
-            return "Not recorded"
+        if not value:
+            return option_text(
+                self.current_language,
+                "not_recorded",
+            )
 
         try:
+            if isinstance(value, str):
+                value = datetime.fromisoformat(
+                    value.replace(
+                        "Z",
+                        "+00:00",
+                    )
+                )
+
             return value.astimezone().strftime(
                 "%Y-%m-%d %H:%M"
             )
-        except (AttributeError, ValueError):
+
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+        ):
             return str(value)
 
     def layer_information_tooltip(
@@ -608,74 +707,206 @@ class OptionsDialog(QDialog):
             language=self.current_language,
         )
 
+        not_recorded = option_text(
+            self.current_language,
+            "not_recorded",
+        )
+
         lines = [
             display_name,
             "",
             (
-                "Source file: "
-                f"{layer_definition['source']}"
+                option_text(
+                    self.current_language,
+                    "source_file",
+                )
+                + ": "
+                + str(
+                    layer_definition["source"]
+                )
             ),
             (
-                "Database layer: "
-                f"{database['schema']}."
-                f"{database['table']}"
+                option_text(
+                    self.current_language,
+                    "database_layer",
+                )
+                + ": "
+                + f"{database['schema']}."
+                + f"{database['table']}"
             ),
             (
-                "Geometry column: "
-                f"{database['geometry_column']}"
+                option_text(
+                    self.current_language,
+                    "geometry_column",
+                )
+                + ": "
+                + str(
+                    database["geometry_column"]
+                )
             ),
             (
-                "CRS: "
-                f"EPSG:{database['srid']}"
+                option_text(
+                    self.current_language,
+                    "crs",
+                )
+                + ": "
+                + f"EPSG:{database['srid']}"
             ),
         ]
 
         if metadata is None:
+            if metadata_error:
+                unavailable_text = option_text(
+                    self.current_language,
+                    "metadata_unavailable",
+                )
+            else:
+                unavailable_text = option_text(
+                    self.current_language,
+                    "no_catalogue_entry",
+                )
+
             lines.extend(
                 [
                     "",
-                    (
-                        metadata_error
-                        or (
-                            "No catalogue entry was found "
-                            "for this layer."
-                        )
-                    ),
+                    unavailable_text,
                 ]
             )
 
             return "\n".join(lines)
 
+        migration_status = str(
+            metadata.get(
+                "migration_status"
+            )
+            or "unknown"
+        ).strip().lower()
+
+        migration_status_text = option_text(
+            self.current_language,
+            {
+                "unknown": "migration_unknown",
+                "running": "migration_running",
+                "success": "migration_success",
+                "failed": "migration_failed",
+            }.get(
+                migration_status,
+                "migration_unknown",
+            ),
+        )
+
+        record_count = metadata.get(
+            "record_count"
+        )
+
+        if record_count is None:
+            record_count = not_recorded
+
         lines.extend(
             [
                 "",
                 (
-                    "Dataset: "
-                    f"{metadata.get('dataset_name') or 'Not recorded'}"
+                    option_text(
+                        self.current_language,
+                        "dataset",
+                    )
+                    + ": "
+                    + str(
+                        metadata.get(
+                            "dataset_name"
+                        )
+                        or not_recorded
+                    )
                 ),
                 (
-                    "Provider: "
-                    f"{metadata.get('provider') or 'Not recorded'}"
+                    option_text(
+                        self.current_language,
+                        "provider",
+                    )
+                    + ": "
+                    + str(
+                        metadata.get(
+                            "provider"
+                        )
+                        or not_recorded
+                    )
                 ),
                 (
-                    "Source updated: "
-                    f"{self.display_metadata_date(metadata.get('source_updated_at'))}"
+                    option_text(
+                        self.current_language,
+                        "source_updated",
+                    )
+                    + ": "
+                    + self.display_metadata_date(
+                        metadata.get(
+                            "source_updated_at"
+                        )
+                    )
                 ),
                 (
-                    "Migrated to Sovra: "
-                    f"{self.display_metadata_date(metadata.get('migrated_at'))}"
+                    option_text(
+                        self.current_language,
+                        "migrated_to_sovra",
+                    )
+                    + ": "
+                    + self.display_metadata_date(
+                        metadata.get(
+                            "migrated_at"
+                        )
+                    )
                 ),
                 (
-                    "Records: "
-                    f"{metadata.get('record_count') if metadata.get('record_count') is not None else 'Not recorded'}"
+                    option_text(
+                        self.current_language,
+                        "last_accessed",
+                    )
+                    + ": "
+                    + self.display_metadata_date(
+                        metadata.get(
+                            "last_accessed_at"
+                        )
+                    )
                 ),
                 (
-                    "Geometry: "
-                    f"{metadata.get('geometry_type') or 'Not recorded'}"
+                    option_text(
+                        self.current_language,
+                        "metadata_updated",
+                    )
+                    + ": "
+                    + self.display_metadata_date(
+                        metadata.get(
+                            "metadata_updated_at"
+                        )
+                    )
                 ),
                 (
-                    "Migration status: "
-                    f"{metadata.get('migration_status') or 'Not recorded'}"
+                    option_text(
+                        self.current_language,
+                        "records",
+                    )
+                    + ": "
+                    + str(record_count)
+                ),
+                (
+                    option_text(
+                        self.current_language,
+                        "geometry",
+                    )
+                    + ": "
+                    + str(
+                        metadata.get(
+                            "geometry_type"
+                        )
+                        or not_recorded
+                    )
+                ),
+                (
+                    option_text(
+                        self.current_language,
+                        "migration_status",
+                    )
+                    + ": "
+                    + migration_status_text
                 ),
             ]
         )
@@ -688,7 +919,14 @@ class OptionsDialog(QDialog):
             lines.extend(
                 [
                     "",
-                    f"Source URL: {source_url}",
+                    (
+                        option_text(
+                            self.current_language,
+                            "source_url",
+                        )
+                        + ": "
+                        + str(source_url)
+                    ),
                 ]
             )
 
